@@ -6,7 +6,6 @@ function qtt(lmax_p, cltt, nltt)
     lmax_t = len(cltt) - 1
 
     # initialize gl quadrature
-    npoints = convert(Integer, (lmax_t*2+lmax_p)/2+1)
     glq = glquad(Int(lmax_t*2+lmax_p+1)/2)
 
     # common factors
@@ -34,7 +33,7 @@ function qeb(lmax_p, clbb, clee, nleb)
     lmax_b  = length(clbb) - 1
 
     # initialize gl quadrature
-    npoints = Int((lmax_p+lmax_b+lmax_e+2)/2)
+    npoints = Int((lmax_p+lmax_b+lmax_e+1)/2)
     gl = glquad(npoints)
 
     # common factors
