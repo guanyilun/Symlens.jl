@@ -100,17 +100,46 @@ function drop_wigd(expr)
     if (expr isa SymbolicUtils.Term && expr.f == wigd); return 1 end
     @assert (expr isa SymbolicUtils.Mul) || (expr isa SymbolicUtils.Div)
     target = expr isa SymbolicUtils.Mul ? expr : expr.num
-    args = filter(x -> !(x isa SymbolicUtils.Term && x.f == wigd), arguments(target))
-    new_target = operation(target)(args...)
-    expr isa SymbolicUtils.Mul ? new_target : new_target / expr.den
+    # target could be wigd itself
+    if (target isa SymbolicUtils.Term && target.f == wigd)
+        new_target = 1
+    else
+        # otherwise assume it's a multiplication
+        @assert target isa SymbolicUtils.Mul "unhandled case"
+        args = filter(x -> !(x isa SymbolicUtils.Term && x.f == wigd), arguments(target))
+        new_target = operation(target)(args...)
+    end
+    expr isa SymbolicUtils.Div ? new_target / expr.den : new_target
 end
 
-function build_cl_cf_tables(expr)
+"""try to reduce the number of terms in cf_tables
+by grouping similar terms"""
+function reduce_cf_table(cf_table)
+    reduce_table = Dict()
+    for v in cf_table
+        k = (v[1],v[3])
+        if haskey(reduce_table, k); reduce_table[k] += v[2]
+        else reduce_table[k] = v[2] end
+    end
+    # map back
+    [[k[1],v,k[2]] for (k,v) in reduce_table]
+end
+
+"""build some factorization tables which contain all information needed to build a function.
+prefactor assumes the cf_from_cl calls will have prefactor option turned on
+
+"""
+function build_cl_cf_tables(expr; prefactor=false)
     @syms ℓ ℓ₁ ℓ₂
     @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
     isdiv = expr isa SymbolicUtils.Div
     # I. treat denominator, which is easy as it is assumed to be factorizable
     # make sure denominator is atomic in ells
+
+    # treat prefactor in different cases
+    prefactor && isdiv  && (expr = (16π^2*expr.num) / (expr.den*(2ℓ₁+1)*(2ℓ₂+1));)
+    prefactor && !isdiv && (expr = (16π^2*expr) / ((2ℓ₁+1)*(2ℓ₂+1)); isdiv=true;)
+
     if isdiv
         @assert are_factors_atomic(expr.den)
         den_factors = factorize_ells(expr.den)
@@ -121,6 +150,7 @@ function build_cl_cf_tables(expr)
     #     into wigner 3j symbols
     #     (if we didn't get a division, treat it as the numerator)
     num = isdiv ? expr.num : expr
+    #  apply prefactor to numerator if needed
     step1 = simplify(num, RuleSet([rules_F_to_w3j[2]]))
     #  2. expand powers of polynomials if there is any
     # step2 = simplify(expand(step1), RuleSet(rules_w3j))  # doesn't seem to help for my tests so disabled
@@ -177,13 +207,15 @@ function build_cl_cf_tables(expr)
         # one one to group them by s1 s2 pairs so we can save wigd calls,
         # what's here is really a compromise to avoid premature optimization.
     end
-    cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₂=>ℓ, ℓ₁=>ℓ))) for (k,v) in l1_map)
+    cl_table = reduce_cf_table(cl_table)
+    cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₁=>ℓ))) for (k,v) in l1_map)
+    # try to reduce the number of terms in cf_table by grouping common factors
     # with both of these tables, we should be good to build
     # our function manually
     (cl_table, cf_table)
 end
 
-function build_wigd_calls(cl_table, cf_table, rename_table)
+function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
     nexprs = length(cf_table)
     exprs = []
     # create n local variables to represent each zeta note that this
@@ -197,8 +229,13 @@ function build_wigd_calls(cl_table, cf_table, rename_table)
     append!(exprs, [:($(rename(k).name) = @__dot__ $(substitute(v[2], rename_table)))
                     for (k,v) in cf_table])
     # build cl_from_cl expression, reuse variable names
-    append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
-                    for (k,v) in cf_table])
+    if prefactor
+        append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name); prefactor=true))
+                        for (k,v) in cf_table])
+    else
+        append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
+                        for (k,v) in cf_table])
+    end
     # build cf_from_cl expression and add inplace
     for (i,v) in enumerate(cl_table)
         # the awkward pipe is to avoid __dot__ from picking up other variables in the function
@@ -213,15 +250,15 @@ function build_wigd_calls(cl_table, cf_table, rename_table)
     exprs
 end
 
-function build_l12sum_calculator(expr, name, rename_table, args; evaluate=false, pre=[], post=[])
-    cl_table, cf_table = build_cl_cf_tables(expr)
+function build_l12sum_calculator(expr, name, rename_table, args; prefactor=false, evaluate=false, pre=[], post=[])
+    cl_table, cf_table = build_cl_cf_tables(expr; prefactor=prefactor)
     name = name isa String ? Symbol(name) : name
     f = :(function $(name)(lmax, $(map(x->getfield(x,:name), args)...))
               $(pre...)   # allow pass in arbitrary preprocessor
               npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
               glq = wignerd.glquad(npoints)
               ℓ = collect(0:(max(length.([$(args...)])...)-1))
-              $(build_wigd_calls(cl_table, cf_table, rename_table)...)
+              $(build_wigd_calls(cl_table, cf_table, rename_table; prefactor=prefactor)...)
               $(post...)  # allow pass in arbitrary postprocessor
               res         # we have assumed result is stored in this variable
           end)
