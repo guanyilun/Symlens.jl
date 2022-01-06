@@ -1,3 +1,5 @@
+module rot
+
 using wignerd
 
 """
@@ -28,3 +30,5 @@ function clbb_from_claa(lmax, clee, claa)
             cl_from_cf(glq, -2, 2, lmax, @. zeta_00 * zeta_p2m2)) .* (4π)
     clbb
 end
+
+end  # module

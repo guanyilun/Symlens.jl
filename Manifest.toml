@@ -768,7 +768,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 
 [[deps.wignerd]]
 deps = ["FastGaussQuadrature", "LoopVectorization", "Tullio"]
-git-tree-sha1 = "6bbaba470935b6b7003021ff243896138f72601c"
+git-tree-sha1 = "7357b5f6953cbb15e2dc1c7411b8afb34bcfeae3"
 repo-rev = "master"
 repo-url = "https://github.com/guanyilun/wignerd.jl"
 uuid = "49d3ce31-8ce4-4efd-b9c8-b4f4221d34d9"

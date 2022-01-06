@@ -1,4 +1,4 @@
-module cmblens
+module lens
 
 using wignerd
 

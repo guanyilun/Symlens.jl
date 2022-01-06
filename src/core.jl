@@ -9,19 +9,26 @@ rules_F_to_w3j[1] = @rule F(~l1,~l2,~l3,~s) => (-~l1*(~l1+1) + ~l2*(~l2+1) + ~l3
 rules_F_to_w3j[2] = @rule F(~l1,~l2,~l3,~s) => -((2*~l1+1)*(2*~l2+1)*~l3*(~l3+1)*(2*~l3+1))^(1/2) *
     (((~l2-~s)*(~l2+s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s+1,-1) + ((~l2+~s)*(~l2-~s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s-1,1))  # recursive rule
 
+rules_w3j = Vector(undef, 6)
+rules_w3j[1] = @acrule (-1)^(~l1+~l2+~l3)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
+rules_w3j[2] = @acrule (-1)^(~l2+~l3+~l1)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
+rules_w3j[3] = @acrule (-1)^(~l3+~l1+~l2)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
+rules_w3j[4] = @acrule (-1)^(~l2+~l1+~l3)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
+rules_w3j[5] = @acrule (-1)^(~l1+~l3+~l2)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
+rules_w3j[6] = @acrule (-1)^(~l3+~l2+~l1)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
 rules_w3j_to_wigd = Vector(undef, 7)
 # 3 permutation rules
-rules_w3j_to_wigd[1] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l1,~l2,~l3,~s1p,~s2p,~s3p) => wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
-rules_w3j_to_wigd[2] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l2,~l3,~l1,~s2p,~s3p,~s1p) => wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
-rules_w3j_to_wigd[3] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l3,~l1,~l2,~s3p,~s1p,~s2p) => wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
+rules_w3j_to_wigd[1] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l1,~l2,~l3,~s1p,~s2p,~s3p) => 0.5*wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
+rules_w3j_to_wigd[2] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l2,~l3,~l1,~s2p,~s3p,~s1p) => 0.5*wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
+rules_w3j_to_wigd[3] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l3,~l1,~l2,~s3p,~s1p,~s2p) => 0.5*wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
 # 3 flipping rules
-rules_w3j_to_wigd[4] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l2,~l1,~l3,~s2p,~s1p,~s3p) => wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
-rules_w3j_to_wigd[5] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l3,~l2,~l1,~s3p,~s2p,~s1p) => wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
-rules_w3j_to_wigd[6] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l1,~l3,~l2,~s1p,~s3p,~s2p) => wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
+rules_w3j_to_wigd[4] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l2,~l1,~l3,~s2p,~s1p,~s3p) => 0.5*wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
+rules_w3j_to_wigd[5] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l3,~l2,~l1,~s3p,~s2p,~s1p) => 0.5*wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
+rules_w3j_to_wigd[6] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l1,~l3,~l2,~s1p,~s3p,~s2p) => 0.5*wigd(~l1,~s1,-~s1p)*wigd(~l2,~s2,-~s2p)*wigd(~l3,~s3,-~s3p)
 # special case of squaring
-rules_w3j_to_wigd[7] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)^2 => wigd(~l1,~s1,~s1)*wigd(~l2,~s2,~s2)*wigd(~l3,~s3,~s3)
+rules_w3j_to_wigd[7] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)^2 => 0.5*wigd(~l1,~s1,~s1)*wigd(~l2,~s2,~s2)*wigd(~l3,~s3,~s3)
 
-rules_wigd = Vector(undef, 5)
+rules_wigd = Vector(undef, 3)
 rules_wigd[1] = @rule wigd(~l,~s1::(x->x<0),~s2) => (-1)^(~s1-~s2)*wigd(~l,-~s1,-~s2)
 rules_wigd[2] = @rule wigd(~l,~s1,~s2) => ~s1 < ~s2 ? (-1)^(~s1-~s2)*wigd(~l,~s2,~s1) : nothing
 rules_wigd[3] = @rule wigd(~l,~s1,~s2) => ~s1 < -~s2 ? wigd(~l,-~s2,-~s1) : nothing
@@ -56,14 +63,17 @@ function factorize_ells(expr)
     # factorize expression to different symbols
     # factors need to be atomic in ells
     @assert are_factors_atomic(expr) "expr is not factorizable"
-    op = operation(expr)
+    op   = operation(expr)
     args = arguments(expr)
-
     syms = get_variables_deep(expr)
+
     factors = Dict()
     for sym in syms
         factors[sym] = simplify(op(filter(x->is_term_of(x, [sym]), args)...))
     end
+    # don't forget about constant
+    factors[:const] = simplify(op(filter(x->is_term_of(x, Any[]), args)...))
+
     factors
 end
 
@@ -84,6 +94,7 @@ function drop_wigd(expr)
     # drop wigner d function in the expression, we assume the expression
     # is a product of vector elements or a division whose numerator is a
     # multiplication product.
+    if (expr isa SymbolicUtils.Term && expr.f == wigd); return 1 end
     @assert (expr isa SymbolicUtils.Mul) || (expr isa SymbolicUtils.Div)
     target = expr isa SymbolicUtils.Mul ? expr : expr.num
     args = filter(x -> !(x isa SymbolicUtils.Term && x.f == wigd), arguments(target))
@@ -91,20 +102,24 @@ function drop_wigd(expr)
     expr isa SymbolicUtils.Mul ? new_target : new_target / expr.den
 end
 
-# make sure expression of interests is a division
-# res = let expr = Nlϕϕ_TT
 function build_cl_cf_tables(expr)
-    @syms ℓ,ℓ₁,ℓ₂
-    @assert expr isa SymbolicUtils.Div
-    # make sure denominator is atomic in ells
-    @assert are_factors_atomic(expr.den)
-    # I. treat denominator, which is easy as it is assumed to be factorizable
-    den_factors = factorize_ells(expr.den)
+    @syms ℓ ℓ₁ ℓ₂
+    @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
+    isdiv = expr isa SymbolicUtils.Div
+    if isdiv
+        # make sure denominator is atomic in ells
+        @assert are_factors_atomic(expr.den)
+        # I. treat denominator, which is easy as it is assumed to be factorizable
+        den_factors = factorize_ells(expr.den)
+    end
     # II. treat numerator, it will contain wigner 3j related quantities so is more involved
     #  1. if numerator contains F function, use recursive relation to expand it into
     #     wigner 3j symbols
-    step1 = simplify(expr.num, RuleSet([rules_F_to_w3j[2]]))
+    #     (if we didn't get a division, treat it as the numerator)
+    num = isdiv ? expr.num : expr
+    step1 = simplify(num, RuleSet([rules_F_to_w3j[2]]))
     #  2. expand powers of polynomials if there is any
+    # step2 = simplify(expand(step1), RuleSet(rules_w3j))  # doesn't seem to help for my tests so disabled
     step2 = expand(step1)
     #  3. convert wigner 3j products to wigner d matrices
     step3 = simplify(step2, RuleSet(rules_w3j_to_wigd))
@@ -124,10 +139,12 @@ function build_cl_cf_tables(expr)
     @assert all([count_terms_of(Symbolics.get_variables(term), wigd) == 3 for term ∈ num_terms]) "more than 3 wigd found in some term, fail!"
     #  6. now we are probably safe to proceed to factorize, factorize each term into l, l1, l2 parts
     num_factors_table = factorize_ells.(num_terms)
-    #  7. now it's time to incorporate denominator, match l, l1 and l2, modified in place in
+    #  7. now it's time to incorporate denominator, if any, to match l, l1 and l2, modified in place in
     #     num_factors_table
-    for num_factors ∈ num_factors_table, s ∈ vars
-        num_factors[s] = SymbolicUtils.simplify_div(num_factors[s] / den_factors[s])  # drop common factors
+    if isdiv
+        for num_factors ∈ num_factors_table, s ∈ [vars...,:const]
+            num_factors[s] = SymbolicUtils.simplify_div(num_factors[s] / den_factors[s])  # drop common factors
+        end
     end
     #  8. collect unique terms for l1 and l2 respectively
     unique_terms_l12 = Dict(sym => collect(Set(map(x->x[sym], num_factors_table))) for sym in [ℓ₁,ℓ₂])  # loop over l1, l2 and collect unique factors
@@ -143,7 +160,7 @@ function build_cl_cf_tables(expr)
     #     index it is from wrt wigd matrix.
     cf2cl_table = Dict()
     for num_factors ∈ num_factors_table
-        term = reduce(*, [substitute(num_factors[s], Dict(l1_map...,l2_map...)) for s ∈ [ℓ₁,ℓ₂]])
+        term = reduce(*, [substitute(num_factors[s], Dict(l1_map...,l2_map...)) for s ∈ [ℓ₁,ℓ₂]]) * num_factors[:const]
         # get wigner d spins (s1, s2)
         s12  = get_wigd_s12(num_factors[ℓ])
         # get factors apart from wigd
@@ -161,34 +178,44 @@ end
 function build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)
     nexprs = length(cl2cf_table)
     exprs = []
-    # create n local variables to represent each zeta
+    # create n local variables to represent each zeta note that this
+    # is not elegant as often times some of these zeta variables are
+    # identical, so I should add another unique and variable remapping
+    # here <- FIXME
     rename = (x) -> substitute(x,
         Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
             for (i, (k, _)) ∈ enumerate(cl2cf_table)))
     # build assignment expression
     append!(exprs, [:($(rename(k).name) = @__dot__ $(toexpr(substitute(v[2], rename_table))))
                     for (k,v) in cl2cf_table])
-
     # build cl_from_cl expression, reuse variable names
-    append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(toexpr(rename(k)))))
+    append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
                     for (k,v) in cl2cf_table])
     # build cf_from_cl expression and add inplace
     for (i,(k,v)) in enumerate(cf2cl_table)
-        if i == 1
-            push!(exprs, :(res   = cl_from_cf(glq,$(k...),lmax, @__dot__ $(toexpr(rename(v))))))
-        else
-            push!(exprs, :(res .+= cl_from_cf(glq,$(k...),lmax, @__dot__ $(toexpr(rename(v))))))
-        end
+        if i == 1; push!(exprs, :(res   = cl_from_cf(glq,$(k...),lmax, @__dot__$(rename(v)))))
+        else push!(exprs, :(res .+= cl_from_cf(glq,$(k...),lmax, @__dot__$(rename(v))))) end
     end
     exprs
 end
 
-function build_l12sum_calculator(name, cl2cf_table, cf2cl_table, rename_table, args; evaluate=false)
+function build_l12sum_calculator(expr, name, rename_table, args; evaluate=false, pre=[], post=[])
+    cf2cl_table, cl2cf_table = build_cl_cf_tables(expr)
     name = name isa String ? Symbol(name) : name
-    f = :(function $(name)(glq, lmax, $(map(x->getfield(x,:name),args)...))
-            ℓ = collect(0:max(length.([$(args...)])))
-            $(build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)...)
-            res
-     end)
-    evaluate ? eval(f) : f
+    f = :(function $(name)(lmax, $(map(x->getfield(x,:name),args)...))
+              $(pre...)   # allow pass in arbitrary preprocessor
+              npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
+              glq = wignerd.glquad(npoints)
+              ℓ = collect(0:(max(length.([$(args...)])...)-1))
+              $(build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)...)
+              $(post...)  # allow pass in arbitrary postprocessor
+          end)
+    # For some reason, functions built this way are contaminated by
+    # the types of variables used to built it, i.e., they carry
+    # implicite information. Also there is bugs in SymbolicUtils.Code
+    # toexpr that it doesn't work with macro like __dot__ nicely.
+    # Hence, I use a dirty hack that converts the function to a string
+    # and parse it back. This way the implicit type information of
+    # all variables are lost in the process.
+    evaluate ? (string(f) |> Meta.parse |> eval) : f
 end
