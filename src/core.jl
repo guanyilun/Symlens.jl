@@ -109,15 +109,16 @@ function build_cl_cf_tables(expr)
     @syms ℓ ℓ₁ ℓ₂
     @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
     isdiv = expr isa SymbolicUtils.Div
+    # I. treat denominator, which is easy as it is assumed to be factorizable
+    # make sure denominator is atomic in ells
     if isdiv
-        # make sure denominator is atomic in ells
         @assert are_factors_atomic(expr.den)
-        # I. treat denominator, which is easy as it is assumed to be factorizable
         den_factors = factorize_ells(expr.den)
     end
-    # II. treat numerator, it will contain wigner 3j related quantities so is more involved
-    #  1. if numerator contains F function, use recursive relation to expand it into
-    #     wigner 3j symbols
+    # II. treat numerator, it will contain wigner 3j related
+    #     quantities so is more involved
+    #  1. if numerator contains F function, use recursive relation to expand it
+    #     into wigner 3j symbols
     #     (if we didn't get a division, treat it as the numerator)
     num = isdiv ? expr.num : expr
     step1 = simplify(num, RuleSet([rules_F_to_w3j[2]]))
@@ -172,9 +173,9 @@ function build_cl_cf_tables(expr)
         # get l terms apart from wigd
         lterm = drop_wigd(num_factors[ℓ])
         push!(cl_table, [s12, term, lterm])
-        # collect all terms with a given (s1, s2) pair
-        # if haskey(cl_table, s12); cl_table[s12] += term;
-        # else cl_table[s12] = term end
+        # Note that this is not elegant nor efficient, ideally
+        # one one to group them by s1 s2 pairs so we can save wigd calls,
+        # what's here is really a compromise to avoid premature optimization.
     end
     cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₂=>ℓ, ℓ₁=>ℓ))) for (k,v) in l1_map)
     # with both of these tables, we should be good to build

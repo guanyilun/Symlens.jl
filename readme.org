@@ -1,3 +1,7 @@
 * laughing-succotash
 
-Calculation of full sky lensing reconstruction normalization in julia.
+CMB quadratic estimator related calculation. Mostly it concerns
+normalization of quadratic estimators, though it's not limited to
+that. The core of this code is a symbolic factorization of double
+l-space summation of quadratic terms in wigner 3j symbols. Such terms
+are most often seen in the calculation of lensing normalization.
