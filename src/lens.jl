@@ -3,10 +3,10 @@ module lens
 using wignerd
 
 function qtt(lmax_p, cltt, nltt)
-    lmax_t = len(cltt) - 1
+    lmax_t = length(cltt) - 1
 
     # initialize gl quadrature
-    glq = glquad(Int(lmax_t*2+lmax_p+1)/2)
+    glq = (lmax_t*2+lmax_p+1)/2 |> round |> Int |> glquad
 
     # common factors
     ℓ = collect(0:lmax_t)
@@ -33,8 +33,7 @@ function qeb(lmax_p, clbb, clee, nleb)
     lmax_b  = length(clbb) - 1
 
     # initialize gl quadrature
-    npoints = Int((lmax_p+lmax_b+lmax_e+1)/2)
-    gl = glquad(npoints)
+    glq = (lmax_t*2+lmax_p+1)/2 |> round |> Int |> glquad
 
     # common factors
     ℓ         = collect(0:lmax_e)
