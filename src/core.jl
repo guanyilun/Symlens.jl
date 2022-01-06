@@ -5,8 +5,8 @@ using Symbolics, SymbolicUtils, SymbolicUtils.Code
 @syms wigd(l::Number,s1::Number,s2::Number)::Real
 
 rules_F_to_w3j = Vector(undef,2)
-rules_F_to_w3j[1] = @rule F(~l1,~l2,~l3,~s) => (-~l1*(~l1+1) + ~l2*(~l2+1) + ~l3*(~l3+1)) * ((2*~l1+1)*(2*~l2+1)*(2*~l3+1))^(1/2) * w3j(~l1,~l2,~l3,-~s,~s,0)  # definition
-rules_F_to_w3j[2] = @rule F(~l1,~l2,~l3,~s) => -((2*~l1+1)*(2*~l2+1)*~l3*(~l3+1)*(2*~l3+1))^(1/2) *
+rules_F_to_w3j[1] = @rule F(~l1,~l2,~l3,~s) => (-~l1*(~l1+1) + ~l2*(~l2+1) + ~l3*(~l3+1)) * ((2*~l1+1)*(2*~l2+1)*(2*~l3+1)/(16π))^(1/2) * w3j(~l1,~l2,~l3,-~s,~s,0)  # definition
+rules_F_to_w3j[2] = @rule F(~l1,~l2,~l3,~s) => -((2*~l1+1)*(2*~l2+1)*~l3*(~l3+1)*(2*~l3+1)/(16π))^(1/2) *
     (((~l2-~s)*(~l2+s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s+1,-1) + ((~l2+~s)*(~l2-~s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s-1,1))  # recursive rule
 
 rules_w3j = Vector(undef, 6)
@@ -69,10 +69,13 @@ function factorize_ells(expr)
 
     factors = Dict()
     for sym in syms
-        factors[sym] = simplify(op(filter(x->is_term_of(x, [sym]), args)...))
+        terms = filter(x->is_term_of(x, [sym]), args)
+        factors[sym] = ifelse(length(terms) > 0, simplify(op(terms...)), 1)
     end
     # don't forget about constant
-    factors[:const] = simplify(op(filter(x->is_term_of(x, Any[]), args)...))
+    constants = filter(x->is_term_of(x, Any[]), args)
+    if length(constants)>0; factors[:const] = op(constants...)
+    else factors[:const] = 1 end
 
     factors
 end
@@ -142,8 +145,11 @@ function build_cl_cf_tables(expr)
     #  7. now it's time to incorporate denominator, if any, to match l, l1 and l2, modified in place in
     #     num_factors_table
     if isdiv
-        for num_factors ∈ num_factors_table, s ∈ [vars...,:const]
-            num_factors[s] = SymbolicUtils.simplify_div(num_factors[s] / den_factors[s])  # drop common factors
+        for num_factors ∈ num_factors_table
+            for s ∈ [ℓ, ℓ₁, ℓ₂]
+                num_factors[s] = SymbolicUtils.simplify_div(num_factors[s] / den_factors[s])  # drop common factors
+            end
+            num_factors[:const] = num_factors[:const] / den_factors[:const]  # no need to simplify constants
         end
     end
     #  8. collect unique terms for l1 and l2 respectively
@@ -158,25 +164,26 @@ function build_cl_cf_tables(expr)
     l2_map = Dict(substitute(unique_terms[i], Dict(ℓ₁=>ℓ₂)) => ζ[i] for i=1:length(unique_terms))
     # 11. now we remerge l,l1,l2 expressions in each term, while keeping track of which (s1, s2)
     #     index it is from wrt wigd matrix.
-    cf2cl_table = Dict()
+    cl_table = []
     for num_factors ∈ num_factors_table
         term = reduce(*, [substitute(num_factors[s], Dict(l1_map...,l2_map...)) for s ∈ [ℓ₁,ℓ₂]]) * num_factors[:const]
         # get wigner d spins (s1, s2)
         s12  = get_wigd_s12(num_factors[ℓ])
-        # get factors apart from wigd
-        term *= drop_wigd(num_factors[ℓ])
+        # get l terms apart from wigd
+        lterm = drop_wigd(num_factors[ℓ])
+        push!(cl_table, [s12, term, lterm])
         # collect all terms with a given (s1, s2) pair
-        if haskey(cf2cl_table, s12); cf2cl_table[s12] += term;
-        else cf2cl_table[s12] = term end
+        # if haskey(cl_table, s12); cl_table[s12] += term;
+        # else cl_table[s12] = term end
     end
-    cl2cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₂=>ℓ, ℓ₁=>ℓ))) for (k,v) in l1_map)
+    cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₂=>ℓ, ℓ₁=>ℓ))) for (k,v) in l1_map)
     # with both of these tables, we should be good to build
     # our function manually
-    (cf2cl_table, cl2cf_table)
+    (cl_table, cf_table)
 end
 
-function build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)
-    nexprs = length(cl2cf_table)
+function build_wigd_calls(cl_table, cf_table, rename_table)
+    nexprs = length(cf_table)
     exprs = []
     # create n local variables to represent each zeta note that this
     # is not elegant as often times some of these zeta variables are
@@ -184,31 +191,38 @@ function build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)
     # here <- FIXME
     rename = (x) -> substitute(x,
         Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
-            for (i, (k, _)) ∈ enumerate(cl2cf_table)))
+            for (i, (k, _)) ∈ enumerate(cf_table)))
     # build assignment expression
-    append!(exprs, [:($(rename(k).name) = @__dot__ $(toexpr(substitute(v[2], rename_table))))
-                    for (k,v) in cl2cf_table])
+    append!(exprs, [:($(rename(k).name) = @__dot__ $(substitute(v[2], rename_table)))
+                    for (k,v) in cf_table])
     # build cl_from_cl expression, reuse variable names
     append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
-                    for (k,v) in cl2cf_table])
+                    for (k,v) in cf_table])
     # build cf_from_cl expression and add inplace
-    for (i,(k,v)) in enumerate(cf2cl_table)
-        if i == 1; push!(exprs, :(res   = cl_from_cf(glq,$(k...),lmax, @__dot__$(rename(v)))))
-        else push!(exprs, :(res .+= cl_from_cf(glq,$(k...),lmax, @__dot__$(rename(v))))) end
+    for (i,v) in enumerate(cl_table)
+        # the awkward pipe is to avoid __dot__ from picking up other variables in the function
+        if i == 1
+            push!(exprs, :(res = (cl_from_cf(glq,$(v[1]...),lmax, @__dot__$(rename(v[2])))
+                                  |> x -> (x .*=@__dot__ $(v[3]); x))))
+        else
+            push!(exprs, :(res .+= (cl_from_cf(glq,$(v[1]...),lmax, @__dot__$(rename(v[2])))
+                                    |> x -> (x .*= @__dot__ $(v[3]); x))))
+        end
     end
     exprs
 end
 
 function build_l12sum_calculator(expr, name, rename_table, args; evaluate=false, pre=[], post=[])
-    cf2cl_table, cl2cf_table = build_cl_cf_tables(expr)
+    cl_table, cf_table = build_cl_cf_tables(expr)
     name = name isa String ? Symbol(name) : name
-    f = :(function $(name)(lmax, $(map(x->getfield(x,:name),args)...))
+    f = :(function $(name)(lmax, $(map(x->getfield(x,:name), args)...))
               $(pre...)   # allow pass in arbitrary preprocessor
               npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
               glq = wignerd.glquad(npoints)
               ℓ = collect(0:(max(length.([$(args...)])...)-1))
-              $(build_wigd_calls(cl2cf_table, cf2cl_table, rename_table)...)
+              $(build_wigd_calls(cl_table, cf_table, rename_table)...)
               $(post...)  # allow pass in arbitrary postprocessor
+              res         # we have assumed result is stored in this variable
           end)
     # For some reason, functions built this way are contaminated by
     # the types of variables used to built it, i.e., they carry
