@@ -1,4 +1,4 @@
-using Symbolics, SymbolicUtils, SymbolicUtils.Code
+using Symbolics, SymbolicUtils, SymbolicUtils.Code, Metatheory, Metatheory.Library
 
 @syms w3j(l1::Number,l2::Number,l3::Number,m1::Number,m2::Number,m3::Number)::Real
 @syms F(l1::Number,l2::Number,l3::Number,s::Number)::Real
@@ -9,13 +9,6 @@ rules_F_to_w3j[1] = @rule F(~l1,~l2,~l3,~s) => (-~l1*(~l1+1) + ~l2*(~l2+1) + ~l3
 rules_F_to_w3j[2] = @rule F(~l1,~l2,~l3,~s) => -((2*~l1+1)*(2*~l2+1)*~l3*(~l3+1)*(2*~l3+1)/(16π))^(1/2) *
     (((~l2-~s)*(~l2+s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s+1,-1) + ((~l2+~s)*(~l2-~s+1))^(1/2)*w3j(~l1,~l2,~l3,-~s,~s-1,1))  # recursive rule
 
-rules_w3j = Vector(undef, 6)
-rules_w3j[1] = @acrule (-1)^(~l1+~l2+~l3)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
-rules_w3j[2] = @acrule (-1)^(~l2+~l3+~l1)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
-rules_w3j[3] = @acrule (-1)^(~l3+~l1+~l2)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
-rules_w3j[4] = @acrule (-1)^(~l2+~l1+~l3)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
-rules_w3j[5] = @acrule (-1)^(~l1+~l3+~l2)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
-rules_w3j[6] = @acrule (-1)^(~l3+~l2+~l1)*w3j(~l1,~l2,~l3,~s1,~s2,~s3) => w3j(~l1,~l2,~l3,-~s1,-~s2,-~s3)
 rules_w3j_to_wigd = Vector(undef, 7)
 # 3 permutation rules
 rules_w3j_to_wigd[1] = @acrule w3j(~l1,~l2,~l3,~s1,~s2,~s3)*w3j(~l1,~l2,~l3,~s1p,~s2p,~s3p) => 0.5*wigd(~l1,~s1,~s1p)*wigd(~l2,~s2,~s2p)*wigd(~l3,~s3,~s3p)
@@ -32,6 +25,53 @@ rules_wigd = Vector(undef, 3)
 rules_wigd[1] = @rule wigd(~l,~s1::(x->x<0),~s2) => (-1)^(~s1-~s2)*wigd(~l,-~s1,-~s2)
 rules_wigd[2] = @rule wigd(~l,~s1,~s2) => ~s1 < ~s2 ? (-1)^(~s1-~s2)*wigd(~l,~s2,~s1) : nothing
 rules_wigd[3] = @rule wigd(~l,~s1,~s2) => ~s1 < -~s2 ? wigd(~l,-~s2,-~s1) : nothing
+
+
+"""This function is used to get rid of annoying factors of (-1)^(l1+l2+l) which
+is hard to get rid of, surprisingly, by the classical rewriting rule, so I had
+to rely on Equality Saturation mechanism using Metatheory.jl"""
+function reduce_w3j_expr(expr)
+    comm_mul = @commutative_monoid (*) 1;
+    comm_add = @commutative_monoid (+) 0;
+
+    w3j_theory = @theory l1 l2 l3 s1 s2 s3 begin
+        w3j(l1,l2,l3,s1,s2,s3) == w3j(l2,l3,l1,s2,s3,s1)
+        w3j(l1,l2,l3,s1,s2,s3) == (-1)^(l1+l2+l3)*w3j(l2,l1,l3,s2,s1,s3)
+        w3j(l1,l2,l3,s1,s2,s3) == (-1)^(l1+l2+l3)*w3j(l1,l2,l3,-s1,-s2,-s3)
+    end
+    # add some missing rules that does associate rules I need so far
+    other_theory = @theory a b c begin
+        (a+b)*c == a*c + b*c
+        a^2 == a*a
+        a^(b+c) == (a^b)*(a^c)
+        (a-b)*c == a*c - b*c
+    end
+    theory = comm_mul ∪ comm_add ∪ w3j_theory ∪ other_theory
+    # cost function for extracting a w3j term from egraph, this is needed because
+    # the popular astsize cost function calculates the number of arguments, which
+    # penalizes the use of wigner 3j which has 6 parameters. This avoids that by
+    # assuming wigner 3j calls is the same as elementary operations.
+    function cost_function(n::ENodeTerm, g::EGraph, an::Type{<:AbstractAnalysis})
+        cost = 1
+        op = operation(n)
+        if op == :w3j; cost += 1
+        else cost += arity(n) end
+        args = arguments(n)
+        for id in arguments(n)
+            eclass = g[id]
+            !hasdata(eclass, an) && (cost += Inf; break)
+            cost += last(getdata(eclass, an))
+        end
+        return cost
+    end
+    cost_function(n::ENodeLiteral, g::EGraph, an::Type{<:AbstractAnalysis}) = 1
+    params = SaturationParams(timeout=20, eclasslimit=1000)
+    g = EGraph(expr)
+    report = saturate!(g, theory, params)
+
+    ex = extract!(g, cost_function)
+    ex |> eval
+end
 
 function get_variables_deep(expr)
     vars = Symbolics.get_variables(expr)
@@ -133,31 +173,34 @@ function build_cl_cf_tables(expr; prefactor=false)
     @syms ℓ ℓ₁ ℓ₂
     @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
     isdiv = expr isa SymbolicUtils.Div
-    # I. treat denominator, which is easy as it is assumed to be factorizable
-    # make sure denominator is atomic in ells
 
     # treat prefactor in different cases
     prefactor && isdiv  && (expr = (16π^2*expr.num) / (expr.den*(2ℓ₁+1)*(2ℓ₂+1));)
     prefactor && !isdiv && (expr = (16π^2*expr) / ((2ℓ₁+1)*(2ℓ₂+1)); isdiv=true;)
 
+    # I. treat denominator, which is easy as it is assumed to be factorizable
+    # We first make sure denominator is atomic in ells, and then factorize it
+    # into l, l1, l2, const terms.
     if isdiv
         @assert are_factors_atomic(expr.den)
         den_factors = factorize_ells(expr.den)
     end
     # II. treat numerator, it will contain wigner 3j related
     #     quantities so is more involved
-    #  1. if numerator contains F function, use recursive relation to expand it
-    #     into wigner 3j symbols
     #     (if we didn't get a division, treat it as the numerator)
     num = isdiv ? expr.num : expr
-    #  apply prefactor to numerator if needed
-    step1 = simplify(num, RuleSet([rules_F_to_w3j[2]]))
-    #  2. expand powers of polynomials if there is any
-    # step2 = simplify(expand(step1), RuleSet(rules_w3j))  # doesn't seem to help for my tests so disabled
-    step2 = expand(step1)
+    #  1. if numerator contains F function, use recursive relation
+    #     to expand it into wigner 3j symbols. Here I'm using rule
+    #     2 of F_to_w3j which may be allowed to change in the future.
+    if count_terms_of(Symbolics.get_variables(expr), F) > 0
+        step1 = simplify(num, RuleSet([rules_F_to_w3j[2]])) |> expand
+    else step1 = num end
+    #  2. get rid of factors of (-1)^(l+l1+l2) which is not
+    #     factorizable but hard to get rid of by rewritting rules
+    step2 = reduce_w3j_expr(step1) |> expand
     #  3. convert wigner 3j products to wigner d matrices
     step3 = simplify(step2, RuleSet(rules_w3j_to_wigd))
-    #     make sure no wigner 3j is left
+    #     and make sure no wigner 3j is left
     @assert count_terms_of(Symbolics.get_variables(step3), w3j) == 0 "some wigner 3j left, fail!"
     #  4. massage wigner d to use index convention that the
     #     first `s` is always the larger (in mag) and positive.
