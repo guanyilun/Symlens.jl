@@ -272,18 +272,16 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
         # get l terms apart from wigd
         lterm = drop_wigd(num_factors[ℓ])
         push!(cl_table, [s12, term, lterm])
-        # Note that this is not elegant nor efficient, ideally
-        # one one to group them by s1 s2 pairs so we can save wigd calls,
-        # what's here is really a compromise to avoid premature optimization.
     end
+    # try to reduce the number of terms in cl_table by grouping common
+    # factors with both of these tables, we should be good to build
+    # our function manually
     verbose && (println("cl_table: ", cl_table))
     cl_table = reduce_cl_table(cl_table)
     verbose && (println("cl_table (after reduce): ", cl_table))
     cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₁=>ℓ))) for (k,v) in l1_map)
     verbose && (println("cf_table: ", cf_table))
-    # try to reduce the number of terms in cl_table by grouping common factors
-    # with both of these tables, we should be good to build
-    # our function manually
+
     (cl_table, cf_table)
 end
 
@@ -293,7 +291,7 @@ function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
     # create n local variables to represent each zeta note that this
     # is not elegant as often times some of these zeta variables are
     # identical, so I should add another unique and variable remapping
-    # here <- FIXME
+    # here at some point <- FIXME
     rename = (x) -> substitute(x,
         Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
             for (i, (k, _)) ∈ enumerate(cf_table)))
