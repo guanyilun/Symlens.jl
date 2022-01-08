@@ -168,9 +168,9 @@ end
 
 """try to reduce the number of terms in cf_tables
 by grouping similar terms"""
-function reduce_cf_table(cf_table)
+function reduce_cl_table(cl_table)
     reduce_table = Dict()
-    for v in cf_table
+    for v in cl_table
         k = (v[1],v[3])
         if haskey(reduce_table, k); reduce_table[k] += v[2]
         else reduce_table[k] = v[2] end
@@ -183,7 +183,7 @@ end
 prefactor assumes the cf_from_cl calls will have prefactor option turned on
 
 """
-function build_cl_cf_tables(expr; prefactor=false, verbose=true)
+function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     @syms ℓ ℓ₁ ℓ₂
     @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
     isdiv = expr isa SymbolicUtils.Div
@@ -277,11 +277,11 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=true)
         # what's here is really a compromise to avoid premature optimization.
     end
     verbose && (println("cl_table: ", cl_table))
-    cl_table = reduce_cf_table(cl_table)
+    cl_table = reduce_cl_table(cl_table)
     verbose && (println("cl_table (after reduce): ", cl_table))
     cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₁=>ℓ))) for (k,v) in l1_map)
     verbose && (println("cf_table: ", cf_table))
-    # try to reduce the number of terms in cf_table by grouping common factors
+    # try to reduce the number of terms in cl_table by grouping common factors
     # with both of these tables, we should be good to build
     # our function manually
     (cl_table, cf_table)
@@ -322,7 +322,7 @@ function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
     exprs
 end
 
-function build_l12sum_calculator(expr, name, rename_table, args; prefactor=false, evaluate=false, pre=[], post=[])
+function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true, evaluate=false, pre=[], post=[])
     cl_table, cf_table = build_cl_cf_tables(expr; prefactor=prefactor)
     name = name isa String ? Symbol(name) : name
     f = :(function $(name)(lmax, $(map(x->getfield(x,:name), args)...))
