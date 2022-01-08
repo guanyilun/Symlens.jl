@@ -1,4 +1,4 @@
-using Symbolics, SymbolicUtils, SymbolicUtils.Code, Metatheory, Metatheory.Library
+using Symbolics, SymbolicUtils, SymbolicUtils.Code, Metatheory, Metatheory.Library, wignerd
 
 @syms w3j(l1::Number,l2::Number,l3::Number,m1::Number,m2::Number,m3::Number)::Real
 @syms F(l1::Number,l2::Number,l3::Number,s::Number)::Real
@@ -105,18 +105,32 @@ function factorize_ells(expr)
     @assert are_factors_atomic(expr) "expr is not factorizable"
     op   = operation(expr)
     args = arguments(expr)
-    syms = get_variables_deep(expr)
-
+    syms = [ℓ, ℓ₁, ℓ₂]
+    # we assume it is a multiplication of different atomic factors,
+    # like (ℓ+1)(ℓ₂+1).... The only exception allowed here is when the
+    # expression is an addition which depends only on one variable,
+    # such as 2l+1. Below we will handle this special case
     factors = Dict()
-    for sym in syms
-        terms = filter(x->is_term_of(x, [sym]), args)
-        factors[sym] = ifelse(length(terms) > 0, simplify(op(terms...)), 1)
+    if expr isa SymbolicUtils.Add
+        vars = get_variables_deep(expr)
+        @assert length(vars) == 1 "Addition of different variables, not sure how to factor, fail!"
+        # now we assume that the entire expr is a factor of one variable only
+        factors[vars[1]] = expr
+        for s in filter(x->(x !== vars[1]), syms)
+            factors[s] = 1
+        end
+        factors[:const] = 1
+    else
+        @assert expr isa SymbolicUtils.Mul "Not add nor mul, not sure how to factor, fail!"
+        for sym in syms
+            terms = filter(x->is_term_of(x, [sym]), args)
+            factors[sym] = length(terms) > 0 ? simplify(op(terms...)) : 1
+        end
+        # don't forget about constant
+        constants = filter(x->is_term_of(x, Any[]), args)
+        if length(constants)>0; factors[:const] = op(constants...)
+        else factors[:const] = 1 end
     end
-    # don't forget about constant
-    constants = filter(x->is_term_of(x, Any[]), args)
-    if length(constants)>0; factors[:const] = op(constants...)
-    else factors[:const] = 1 end
-
     factors
 end
 
@@ -169,14 +183,14 @@ end
 prefactor assumes the cf_from_cl calls will have prefactor option turned on
 
 """
-function build_cl_cf_tables(expr; prefactor=false)
+function build_cl_cf_tables(expr; prefactor=false, verbose=true)
     @syms ℓ ℓ₁ ℓ₂
     @assert expr isa SymbolicUtils.Div || expr isa SymbolicUtils.Mul
     isdiv = expr isa SymbolicUtils.Div
 
     # treat prefactor in different cases
     prefactor && isdiv  && (expr = (16π^2*expr.num) / (expr.den*(2ℓ₁+1)*(2ℓ₂+1));)
-    prefactor && !isdiv && (expr = (16π^2*expr) / ((2ℓ₁+1)*(2ℓ₂+1)); isdiv=true;)
+    prefactor && !isdiv && (expr = (16π^2*expr) / ((2ℓ₁+1)*(2ℓ₂+1)); isdiv=true)
 
     # I. treat denominator, which is easy as it is assumed to be factorizable
     # We first make sure denominator is atomic in ells, and then factorize it
@@ -184,6 +198,7 @@ function build_cl_cf_tables(expr; prefactor=false)
     if isdiv
         @assert are_factors_atomic(expr.den)
         den_factors = factorize_ells(expr.den)
+        verbose && (println("den_factors: ", den_factors))
     end
     # II. treat numerator, it will contain wigner 3j related
     #     quantities so is more involved
@@ -197,15 +212,19 @@ function build_cl_cf_tables(expr; prefactor=false)
     else step1 = num end
     #  2. get rid of factors of (-1)^(l+l1+l2) which is not
     #     factorizable but hard to get rid of by rewritting rules
-    step2 = reduce_w3j_expr(step1) |> expand
+    # step2 = reduce_w3j_expr(step1) |> expand  # disabled, not very robust
+    step2 = expand(step1)
+    verbose && (println("step2: ", step2))
     #  3. convert wigner 3j products to wigner d matrices
     step3 = simplify(step2, RuleSet(rules_w3j_to_wigd))
+    verbose && (println("step3: ", step3))
     #     and make sure no wigner 3j is left
     @assert count_terms_of(Symbolics.get_variables(step3), w3j) == 0 "some wigner 3j left, fail!"
     #  4. massage wigner d to use index convention that the
     #     first `s` is always the larger (in mag) and positive.
     #     Ideally, it will reduce the number of terms
     step4 = simplify(step3, RuleSet(rules_wigd))
+    verbose && (println("step4: ", step4))
     #  5. now if success, we should get an Addition of various factors
     #     each of which is a multiplication with atomic factors.
     num_terms = arguments(step4)
@@ -216,26 +235,33 @@ function build_cl_cf_tables(expr; prefactor=false)
     @assert all([count_terms_of(Symbolics.get_variables(term), wigd) == 3 for term ∈ num_terms]) "more than 3 wigd found in some term, fail!"
     #  6. now we are probably safe to proceed to factorize, factorize each term into l, l1, l2 parts
     num_factors_table = factorize_ells.(num_terms)
+    verbose && (println("num_factors_table: ", num_factors_table))
     #  7. now it's time to incorporate denominator, if any, to match l, l1 and l2, modified in place in
     #     num_factors_table
     if isdiv
         for num_factors ∈ num_factors_table
             for s ∈ [ℓ, ℓ₁, ℓ₂]
-                num_factors[s] = SymbolicUtils.simplify_div(num_factors[s] / den_factors[s])  # drop common factors
+                div = num_factors[s] / den_factors[s]
+                num_factors[s] = div isa SymbolicUtils.Div ? SymbolicUtils.simplify_div(div) : div # drop common factors
             end
             num_factors[:const] = num_factors[:const] / den_factors[:const]  # no need to simplify constants
         end
     end
+    verbose && (println("num_factors_table (after div): ", num_factors_table))
     #  8. collect unique terms for l1 and l2 respectively
     unique_terms_l12 = Dict(sym => collect(Set(map(x->x[sym], num_factors_table))) for sym in [ℓ₁,ℓ₂])  # loop over l1, l2 and collect unique factors
+    verbose && (println("unique_terms_l12: ", unique_terms_l12))
     #  9. since we summe over l1 and l2 eventually and we have factored them out, they can be used interchangably
     #     so we should count them together, this allows us to minimize calculation. To do that we temperarily
     #     change l1 l2 to l
     unique_terms = (x->substitute(x, Dict(ℓ₂ => ℓ₁))).([unique_terms_l12[ℓ₁]...,unique_terms_l12[ℓ₂]...]) |> Set |> collect
+    verbose && (println("unique_terms: ", unique_terms))
     # 10. assign a variable to each of the terms and substitute them back to equation
     @variables ζ[1:length(unique_terms)]
     l1_map = Dict(unique_terms[i] => ζ[i] for i=1:length(unique_terms))
+    verbose && (println("l1_map: ", l1_map))
     l2_map = Dict(substitute(unique_terms[i], Dict(ℓ₁=>ℓ₂)) => ζ[i] for i=1:length(unique_terms))
+    verbose && (println("l2_map: ", l2_map))
     # 11. now we remerge l,l1,l2 expressions in each term, while keeping track of which (s1, s2)
     #     index it is from wrt wigd matrix.
     cl_table = []
@@ -250,8 +276,11 @@ function build_cl_cf_tables(expr; prefactor=false)
         # one one to group them by s1 s2 pairs so we can save wigd calls,
         # what's here is really a compromise to avoid premature optimization.
     end
+    verbose && (println("cl_table: ", cl_table))
     cl_table = reduce_cf_table(cl_table)
+    verbose && (println("cl_table (after reduce): ", cl_table))
     cf_table = Dict(v => (get_wigd_s12(k),substitute(drop_wigd(k), Dict(ℓ₁=>ℓ))) for (k,v) in l1_map)
+    verbose && (println("cf_table: ", cf_table))
     # try to reduce the number of terms in cf_table by grouping common factors
     # with both of these tables, we should be good to build
     # our function manually
