@@ -16,7 +16,7 @@ the below example, we are interested in ~R~.
 
   # provide an analytic expression: here R is what we are interested to
   # sum over ℓ₁ and ℓ₂
-  @syms ℓ ℓ₂ ℓ₁ y(ℓ) F(ℓ)
+  @syms ℓ ℓ₂ ℓ₁ y(ℓ) f(ℓ)
 
   W = ((2ℓ+1)*(2ℓ₁+1)*(2ℓ₂+1)/4π)^(1/2)*w3j(ℓ₁,ℓ₂,ℓ,0,0,0)*y(ℓ₁)*y(ℓ₂)
   R = (W^2*f(ℓ₁)*f(ℓ₂))/(2*(2*ℓ+1))
@@ -133,7 +133,7 @@ source_est (generic function with 1 method)
 #+END_SRC
 This tells us that the calculator is successfully evaluated and
 inserted to our scope. We can compare it to a similar calculator
-implemented in =tempura= as hardcoded fortran code,
+implemented in =tempura= which is a hardcoded fortran calculator,
 #+BEGIN_SRC julia
 using PyCall, BenchmarkTools, Plots
 @pyimport numpy as np
@@ -191,10 +191,10 @@ This shows that our new calculator is ~ 32 times faster than the
 previous code. Note that the performance gain is not due to us
 building the function dynamically, nor due to performance of julia
 versus fortran. It is mostly coming from the wigner d calculator which
-I implemented in a separate [[https://github.com/guanyilun/wignerd.jl][repo]]. It is impelemended based on an
-iteration-free algorithm, using =FastGaussianQuadrature= library, that
+I implemented in a separate [[https://github.com/guanyilun/wignerd.jl][repo]]. It is implemented based on an
+iteration-free algorithm, thanks to the =FastGaussianQuadrature.jl= library, that
 solves the quadrature weights in O(1) complexity. This is much faster
 (~200x) than the Newton's method approach implemented in
-=tempura=. The wignerd recursive calculation itself is also about a
-factor of 2-4 faster due to SIMD optimization through
-=LoopVectorization= package.
+=tempura=. The wigner d recursive calculation itself is also about a
+factor of 2-4 faster due to SIMD optimization thanks to the
+=LoopVectorization.jl= package.
