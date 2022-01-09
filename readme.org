@@ -5,3 +5,191 @@ normalization of quadratic estimators, though it's not limited to
 that. The core of this code is a symbolic factorization of double
 l-space summation of quadratic terms in wigner 3j symbols. Such terms
 are most often seen in the calculation of lensing normalization.
+
+** A demonstration of building a calculator for source estimator
+The workflow for building a calculator is the following. Consider the estimator
+for source in CMB. One first need to provide an analytic expression, of the
+quantity that we want to calculate as a sum of ℓ₁ and ℓ₂. For example, in
+the below example, we are interested in ~R~.
+#+BEGIN_SRC julia
+  include("src/core.jl")
+
+  # provide an analytic expression: here R is what we are interested to
+  # sum over ℓ₁ and ℓ₂
+  @syms ℓ ℓ₂ ℓ₁ y(ℓ) F(ℓ)
+
+  W = ((2ℓ+1)*(2ℓ₁+1)*(2ℓ₂+1)/4π)^(1/2)*w3j(ℓ₁,ℓ₂,ℓ,0,0,0)*y(ℓ₁)*y(ℓ₂)
+  R = (W^2*f(ℓ₁)*f(ℓ₂))/(2*(2*ℓ+1))
+
+#+END_SRC
+
+Then one can easily build a calculator for it with
+~build_l12sum_calculator~ function. To use this function, we first
+provide our target expression which is ~R~, and then we provide a
+function name, which we can use to call the built function, here we
+named it =source_ext=. The third parameter is a dictionary that tells
+our code how we can map our symbolic quantities to actual variables in
+the function, and subsequently, in the fourth parameter, tells the
+code how these parameters are to be passed in, i.e., in what
+order. The last parameter tells the code whether one should return the
+function as an expression, which can then be saved to a text file and
+loaded later, or to turn it into a function reachable in our scope. 
+#+BEGIN_SRC julia
+@syms fl yl
+
+build_l12sum_calculator(R, "source_est",
+    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+    [fl, yl],
+    evaluate=false
+)
+#+END_SRC
+
+The output of this code will look like
+#+BEGIN_SRC julia
+  :(function source_est(lmax, fl, yl)
+        npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
+        glq = wignerd.glquad(npoints)
+        ℓ = collect(0:max(length.([fl, yl])...) - 1)
+        zeta_1 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*ℓ*(yl^2))
+        zeta_2 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*(yl^2))
+        zeta_1 = cf_from_cl(glq, 0, 0, zeta_1)
+        zeta_2 = cf_from_cl(glq, 0, 0, zeta_2)
+        res = cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:313 =# @__dot__(0.07957747154594766(zeta_2^2) + 0.31830988618379064(zeta_1^2) + 0.31830988618379064zeta_1*zeta_2)) |> (x->begin
+                        x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:314 =# @__dot__(ℓ / (2 + 4ℓ))
+                        x
+                    end)
+        res .+= cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:316 =# @__dot__(0.03978873577297383(zeta_2^2) + 0.15915494309189532(zeta_1^2) + 0.15915494309189532zeta_1*zeta_2)) |> (x->begin
+                        x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:317 =# @__dot__(1 / (2 + 4ℓ))
+                        x
+                    end)
+        res
+    end)
+#+END_SRC
+which is an expression of the function (pardon the unfortunate comment
+line which is automatically added by julia for debugging purpose). One
+can see that it places our input variables in the defined order. The
+additional parameter ~lmax~ is added by default which tells the code
+what is the maximum ℓ to calculate. The ~cf_from_cl~ calls are
+converting our ℓ space quantities to angular space, and ~cl_from_cf~
+calls are the opposite. This shows how our code factors ℓ space
+convolution into a real space multiplication to speed-up the
+calculation. The result is returned in the ~res~ variable by default.
+Knowing this is important because sometimes one may need to do something
+to the result before returning. For example, we may want to return 
+~1 / res~ instead of ~res~. To do that, there is an option in
+~build_l12sum_calculator~ called ~post~ which allows one to pass a Vector
+of arbitrary expression. We can then write the following
+#+BEGIN_SRC julia
+@syms fl yl
+
+build_l12sum_calculator(R, "source_est",
+    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+    [fl, yl],
+    post=[:(res .^= -1)],
+    evaluate=false,
+)
+#+END_SRC
+
+The output is 
+#+BEGIN_SRC julia
+:(function source_est(lmax, fl, yl)
+      npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
+      glq = wignerd.glquad(npoints)
+      ℓ = collect(0:max(length.([fl, yl])...) - 1)
+      zeta_1 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*ℓ*(yl^2))
+      zeta_2 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*(yl^2))
+      zeta_1 = cf_from_cl(glq, 0, 0, zeta_1)
+      zeta_2 = cf_from_cl(glq, 0, 0, zeta_2)
+      res = cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:313 =# @__dot__(0.07957747154594766(zeta_2^2) + 0.31830988618379064(zeta_1^2) + 0.31830988618379064zeta_1*zeta_2)) |> (x->begin
+                      x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:314 =# @__dot__(ℓ / (2 + 4ℓ))
+                      x
+                  end)
+      res .+= cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:316 =# @__dot__(0.03978873577297383(zeta_2^2) + 0.15915494309189532(zeta_1^2) + 0.15915494309189532zeta_1*zeta_2)) |> (x->begin
+                      x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:317 =# @__dot__(1 / (2 + 4ℓ))
+                      x
+                  end)
+      res .^= -1
+      res
+  end)
+#+END_SRC
+As you can see, the lines are inserted before returning. Similarly
+there is also a ~pre~ option to add statements before computing the
+~zeta~ variables, which work in a similar way so we will not
+demonstrate again. 
+
+Next we can actually evaluate the function, 
+#+BEGIN_SRC julia
+@syms fl yl
+
+build_l12sum_calculator(R, "source_est", 
+    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+    [fl, yl],
+    post = [:(res .^= -1)],
+    evaluate=true)
+#+END_SRC
+output:
+#+BEGIN_SRC text
+source_est (generic function with 1 method)
+#+END_SRC
+This tells us that the calculator is successfully evaluated and
+inserted to our scope. We can compare it to a similar calculator
+implemented in =tempura= as hardcoded fortran code,
+#+BEGIN_SRC julia
+using PyCall, BenchmarkTools, Plots
+@pyimport numpy as np
+@pyimport pytempura as tp
+
+# load cmb power spectrum
+cls = np.loadtxt("data/cosmo2017_10K_acc3_lensedCls.dat")
+
+# make a dummy noise model for testing
+lmax = 3000
+l = collect(0:lmax)
+nltt = @. 10*(1+l/1000)^(3)  # dummy
+cltt = [0,0,cls[1:3000-1,2]...]
+ocltt = nltt + cltt
+
+# tempura call
+ucl = Dict("TT" => cltt)
+tcl = Dict("TT" => ocltt);
+res_py = tp.get_norms(["src"], ucl, tcl, 2, 3000,3000)["src"]
+
+# our dynamically built function
+yl = one.(l)
+fl = 1 ./ ocltt
+res_sym = source_est(3000, fl, yl)
+
+# compare the results
+plot(l, [res_py res_sym], labels=["tempura" "symlens"], xaxis=:log10, xlim=(2,3000), title="source TT")
+#+END_SRC
+
+Output:
+[[./data/example.png]]
+
+This shows that our calculator is in an excellent agreement with
+=tempura=, without us manually writing fortran code! How is the
+performance of our dynamically build calculator compared to Fortran
+code?
+
+#+BEGIN_SRC julia
+@btime tp.get_norms(["src"], $ucl, $tcl, 0, 3000,3000)["src"]; 
+#+END_SRC
+Output:
+#+BEGIN_SRC ascii
+805.793 ms (75 allocations: 26.67 KiB)
+#+END_SRC 
+
+#+BEGIN_SRC julia
+@btime source_est(3000, $fl, $yl);
+#+END_SRC
+Output:
+#+BEGIN_SRC ascii
+23.942 ms (18142 allocations: 1.26 MiB)
+#+END_SRC
+This shows that our new calculator is ~ 32 times faster than the
+previous code. Note that the performance gain is not due to us
+building the function dynamically, nor due to performance of julia
+versus fortran. It is mostly coming from the wignerd calculator that I
+implemented is based on an iteration-free algorithm that solves the
+quadrature weights in O(1) complexity which is much faster than the
+Newton's method approach implemented in =tempura=.
