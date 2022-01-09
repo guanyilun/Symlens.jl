@@ -65,10 +65,11 @@ function reduce_w3j_expr(expr)
         return cost
     end
     cost_function(n::ENodeLiteral, g::EGraph, an::Type{<:AbstractAnalysis}) = 1
-    params = SaturationParams(timeout=20, eclasslimit=1000)
-    g = EGraph(expr)
+    # Assume that we will only encounter shallow search space, so we don't 
+    # waste too much time finding (-1)^{l1+l2+l}
+    params = SaturationParams(timeout=1, eclasslimit=1000)
+    g = EGraph(toexpr(expr))
     report = saturate!(g, theory, params)
-
     ex = extract!(g, cost_function)
     ex |> eval
 end
@@ -212,8 +213,8 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     else step1 = num end
     #  2. get rid of factors of (-1)^(l+l1+l2) which is not
     #     factorizable but hard to get rid of by rewritting rules
-    # step2 = reduce_w3j_expr(step1) |> expand  # disabled, not very robust
-    step2 = expand(step1)
+    step2 = reduce_w3j_expr(step1) |> expand
+    # step2 = expand(step1)
     verbose && (println("step2: ", step2))
     #  3. convert wigner 3j products to wigner d matrices
     step3 = simplify(step2, RuleSet(rules_w3j_to_wigd))
