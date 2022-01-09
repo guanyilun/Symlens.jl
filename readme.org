@@ -164,6 +164,7 @@ plot(l, [res_py res_sym], labels=["tempura" "symlens"], xaxis=:log10, xlim=(2,30
 #+END_SRC
 
 Output:
+
 [[./data/example.png]]
 
 This shows that our calculator is in an excellent agreement with
@@ -189,7 +190,11 @@ Output:
 This shows that our new calculator is ~ 32 times faster than the
 previous code. Note that the performance gain is not due to us
 building the function dynamically, nor due to performance of julia
-versus fortran. It is mostly coming from the wignerd calculator that I
-implemented is based on an iteration-free algorithm that solves the
-quadrature weights in O(1) complexity which is much faster than the
-Newton's method approach implemented in =tempura=.
+versus fortran. It is mostly coming from the wigner d calculator which
+I implemented in a separate [[https://github.com/guanyilun/wignerd.jl][repo]]. It is impelemended based on an
+iteration-free algorithm, using =FastGaussianQuadrature= library, that
+solves the quadrature weights in O(1) complexity. This is much faster
+(~200x) than the Newton's method approach implemented in
+=tempura=. The wignerd recursive calculation itself is also about a
+factor of 2-4 faster due to SIMD optimization through
+=LoopVectorization= package.
