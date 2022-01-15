@@ -114,10 +114,10 @@ end
 Σ⁻ = substitute(Σ⁺, Dict(ℙ=>-ℙ))  # avoid treating imaginary, which is unsupported for now
 Σˣ = 1/(2ℓ+1)*Wₑ⁰(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁺(ℓ₁,ℓ,ℓ₂,cε)A(ℓ₁)B(ℓ₂)
 
-Σ⁰ = 1/(2ℓ+1)*Wₑ⁰(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁰(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
-Σ⁺ = 1/(2ℓ+1)*Wₑ⁺(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁺(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
-Σ⁻ = substitute(Σ⁺, Dict(ℙ=>-ℙ))  # avoid treating imaginary, which is unsupported for now
-Σˣ = 1/(2ℓ+1)*Wₑ⁰(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁺(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
+Γ⁰ = 1/(2ℓ+1)*Wₑ⁰(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁰(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
+Γ⁺ = 1/(2ℓ+1)*Wₑ⁺(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁺(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
+Γ⁻ = substitute(Γ⁺, Dict(ℙ=>-ℙ))  # avoid treating imaginary, which is unsupported for now
+Γˣ = 1/(2ℓ+1)*Wₑ⁰(ℓ₁,ℓ,ℓ₂,cε)Wₑ⁺(ℓ₂,ℓ,ℓ₁,cε)A(ℓ₁)B(ℓ₂)
 
 kernels_amp = Dict()
 for (expr, func) in zip(

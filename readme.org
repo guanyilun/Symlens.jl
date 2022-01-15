@@ -1,4 +1,4 @@
-* Succotash
+* Symlens.jl
 CMB quadratic estimator related calculation. Mostly it concerns
 normalization of quadratic estimators, though it's not limited to
 that. The core of this code is a symbolic factorization of double
