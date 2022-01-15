@@ -1,14 +1,14 @@
 # build estimators following Toshiya's notes
 using Symlens
 
-ζ⁺ = 1
-ζ⁻ = im
+const ζ⁺ = 1
+const ζ⁻ = im
 
-cϕ = 1    # lensing grad
-cω = -im  # lensing curl
-cα = 1    # rotation
-cτ = 1    # source
-cε = 1    # amplitude
+const cϕ = 1    # lensing grad
+const cω = -im  # lensing curl
+const cα = 1    # rotation
+const cτ = 1    # source
+const cε = 1    # amplitude
 
 γ(ℓ₁,ℓ₂,ℓ₃) = ((2ℓ₁+1)*(2ℓ₂+1)*(2ℓ₃+1)/4π)^(1/2)
 
@@ -74,12 +74,12 @@ kernels_lens = Dict()
 for (expr, func) in zip(
     [Σ⁰, Σ⁺, Σ⁻, Σˣ, Γ⁰, Γ⁺, Γ⁻, Γˣ],
     ["Σ⁰", "Σ⁺", "Σ⁻", "Σˣ", "Γ⁰", "Γ⁺", "Γ⁻", "Γˣ"])
-    println("building $func")
+    println("building $func (lens)")
     kernels_lens[func] = Symlens.build_l12sum_calculator(
         expr, func,
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
-        prefactor=true, evaluate=true
+        evaluate=true
     )
 end
 
@@ -97,12 +97,12 @@ kernels_rot = Dict()
 for (expr, func) in zip(
     [Σ⁺, Σ⁻, Γ⁺, Γ⁻],
     ["Σ⁺", "Σ⁻", "Γ⁺", "Γ⁻"])
-    println("building $func")
+    println("building $func (rot)")
     kernels_rot[func] = Symlens.build_l12sum_calculator(
         expr, func,
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
-        prefactor=true, evaluate=true
+        evaluate=true
     )
 end
 
@@ -123,11 +123,93 @@ kernels_amp = Dict()
 for (expr, func) in zip(
     [Σ⁰, Σ⁺, Σ⁻, Σˣ, Γ⁰, Γ⁺, Γ⁻, Γˣ],
     ["Σ⁰", "Σ⁺", "Σ⁻", "Σˣ", "Γ⁰", "Γ⁺", "Γ⁻", "Γˣ"])
-    println("building $func")
+    println("building $func (amp)")
     kernels_amp[func] = Symlens.build_l12sum_calculator(
         expr, func,
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
-        prefactor=true, evaluate=true
+        evaluate=true
     )
+end
+
+#-------------------------------------
+# Quadratic estimators normalization
+#-------------------------------------
+
+function get_kernels_p(est)
+    if est == "lens"
+        return kernels_lens, pϕ
+    elseif est == "rot"
+        return kernels_rot, pα
+    elseif est == "amp"
+        return kernels_amp, pε
+    else
+        throw
+    end
+end
+
+function qtt(est, lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al  = @. 1/ocl["TT"]
+    Bl  = @. cl["TT"]^2/ocl["TT"]
+    res = kernels["Σ⁰"](lmax, Al, Bl)
+    Al .= @. cl["TT"]/ocl["TT"]
+    res .+= p*kernels["Γ⁰"](lmax, Al, Al)
+    1 ./ res
+end
+
+function qte(lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al  = @. 1/ocl["TT"]
+    Bl  = @. cl["TE"]^2/ocl["EE"]
+    res = kernels["Σ⁰"](lmax, Al, Bl)
+    Al .= @. cl["TE"]/ocl["TT"]
+    Bl .= @. cl["TE"]/ocl["EE"]
+    res .+= 2*kernels["Γˣ"](lmax, Al, Bl)
+    Al .= @. 1/ocl["EE"]
+    Bl .= @. cl["TE"]^2/ocl["TT"]
+    res .+= kernels["Γ⁺"](lmax, Al, Bl)
+    1 ./ res
+end
+
+function qtb(lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al  = @. 1/ocl["BB"]
+    Bl  = @. cl["TE"]^2/ocl["TT"]
+    res = kernels["Σ⁰"](lmax, Al, Bl) 
+    1 ./ res
+end
+
+function qee(lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al  = @. 1/ocl["EE"]
+    Bl  = @. cl["EE"]^2/ocl["EE"]
+    res = kernels["Σ⁺"](lmax, Al, Bl)
+    Al .= @. cl["EE"]/ocl["EE"]
+    res .+= p*kernels["Γ⁺"](lmax, Al, Al)
+    1 ./ res
+end
+
+function qbb(lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al  = @. 1/ocl["BB"]
+    Bl  = @. cl["BB"]^2/ocl["BB"]
+    res = kernels["Σ⁺"](lmax, Al, Bl)
+    Al .= @. cl["BB"]/ocl["BB"]
+    res .+= p*kernels["Γ⁺"](lmax, Al, Al)
+    1 ./ res
+end
+
+function qeb(lmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["EE"]
+    Bl = @. cl["BB"]^2/ocl["BB"]
+    res = kernels["Σ⁻"](lmax, Al, Bl)
+    Al .= @. cl["BB"]/ocl["BB"]
+    Bl .= @. cl["EE"]/ocl["EE"]
+    res .+= 2*p*kernels["Γ⁻"](lmax, Al, Bl)
+    Al .= @. 1/ocl["BB"]
+    Bl .= @. cl["EE"]^2/ocl["EE"]
+    res .+= kernels["Σ⁻"](lmax, Al, Bl)
+    1 ./ res
 end
