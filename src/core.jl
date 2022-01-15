@@ -80,8 +80,8 @@ end
 factorize_wigd(expr) = Chain([
     P_to_Q,
     F_to_w3j,
-    w3j_to_wigd,
     expand_nonatomic,
+    w3j_to_wigd,
     resolve_Q,
     wigd_convention
 ])(expr)
@@ -115,7 +115,7 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     verbose && (@show step)
     # 3. now if success, we should get an Addition of various factors
     # each of which is a multiplication with atomic factors.
-    num_terms = step isa SymbolicUtils.Add ? argument(step) : [step]
+    num_terms = step isa SymbolicUtils.Add ? arguments(step) : [step]
     @assert all([x isa SymbolicUtils.Mul for x ∈ num_terms]) "some factors are not multiplicative products, fail!"
     @assert all([are_factors_atomic(x) for x ∈ num_terms]) "some factors not atomic, fail!"
     # and make sure we only have three wigner d matrices in each term
@@ -137,7 +137,8 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     end
     verbose && (println("num_factors_table (after div): ", num_factors_table))
     # 6. collect unique terms for l1 and l2 respectively
-    unique_terms_l12 = Dict(sym => collect(Set(map(x->x[sym], num_factors_table))) for sym in [ℓ₁,ℓ₂])  # loop over l1, l2 and collect unique factors
+    unique_terms_l12 = Dict(sym => collect(Set(map(x->x[sym], num_factors_table)))
+                            for sym in [ℓ₁,ℓ₂])  # loop over l1, l2 and collect unique factors
     verbose && (@show unique_terms_l12)
     # 7. since we summe over l1 and l2 eventually and we have factored
     # them out, they can be used interchangably so we should count
@@ -156,7 +157,8 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     # matrix.
     cl_table = []
     for num_factors ∈ num_factors_table
-        term = reduce(*, [substitute(num_factors[s], Dict(l1_map...,l2_map...)) for s ∈ [ℓ₁,ℓ₂]]) * num_factors[:const]
+        term = reduce(*, [substitute(num_factors[s], Dict(l1_map...,l2_map...))
+                          for s ∈ [ℓ₁,ℓ₂]]) * num_factors[:const]
         # get wigner d spins (s1, s2)
         s12  = get_wigd_s12(num_factors[ℓ])
         # get l terms apart from wigd
