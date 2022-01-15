@@ -76,6 +76,16 @@ function reduce_cl_table(cl_table)
     [[k[1],v,k[2]] for (k,v) in reduce_table]
 end
 
+# main factorization chain
+factorize_wigd(expr) = Chain([
+    P_to_Q,
+    F_to_w3j,
+    w3j_to_wigd,
+    expand_nonatomic,
+    resolve_Q,
+    wigd_convention
+])(expr)
+
 """build some factorization tables which contain all information needed to build a function.
 prefactor assumes the cf_from_cl calls will have prefactor option turned on
 

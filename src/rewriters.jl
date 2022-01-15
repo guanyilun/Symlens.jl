@@ -46,12 +46,3 @@ function expand_nonatomic(expr)
     backward = reverse(forward)
     substitute(expr, forward) |> expand |> x->substitute(x, backward)
 end
-
-factorize_wigd(expr) = Chain([
-    P_to_Q,
-    F_to_w3j,
-    w3j_to_wigd,
-    expand_nonatomic,
-    resolve_Q,
-    wigd_convention
-])(expr)
