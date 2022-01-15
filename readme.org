@@ -12,7 +12,8 @@ for source in CMB. One first need to provide an analytic expression, of the
 quantity that we want to calculate as a sum of ℓ₁ and ℓ₂. For example, in
 the below example, we are interested in ~R~.
 #+BEGIN_SRC julia
-  include("src/core.jl")
+  using SymbolicUtils
+  using symlens
 
   # provide an analytic expression: here R is what we are interested to
   # sum over ℓ₁ and ℓ₂
@@ -20,112 +21,102 @@ the below example, we are interested in ~R~.
 
   W = ((2ℓ+1)*(2ℓ₁+1)*(2ℓ₂+1)/4π)^(1/2)*w3j(ℓ₁,ℓ₂,ℓ,0,0,0)*y(ℓ₁)*y(ℓ₂)
   R = (W^2*f(ℓ₁)*f(ℓ₂))/(2*(2*ℓ+1))
-
 #+END_SRC
 
 Then one can easily build a calculator for it with
-~build_l12sum_calculator~ function. To use this function, we first
-provide our target expression which is ~R~, and then we provide a
-function name, which we can use to call the built function, here we
+~symlens.build_l12sum_calculator~ function. To use this function, we
+first provide our target expression which is ~R~, and then we provide
+a function name, which we can use to call the built function, here we
 named it =source_ext=. The third parameter is a dictionary that tells
 our code how we can map our symbolic quantities to actual variables in
 the function, and subsequently, in the fourth parameter, tells the
 code how these parameters are to be passed in, i.e., in what
 order. The last parameter tells the code whether one should return the
 function as an expression, which can then be saved to a text file and
-loaded later, or to turn it into a function reachable in our scope. 
+loaded later, or to turn it into a function reachable in our scope.
 #+BEGIN_SRC julia
-@syms fl yl
+  @syms fl yl
 
-build_l12sum_calculator(R, "source_est",
-    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
-    [fl, yl],
-    evaluate=false
-)
+  symlens.build_l12sum_calculator(
+      R, "source_est",
+      Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+      [fl, yl],
+      evaluate=false
+  ) |> println
 #+END_SRC
 
 The output of this code will look like
 #+BEGIN_SRC julia
-  :(function source_est(lmax, fl, yl)
-        npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
-        glq = wignerd.glquad(npoints)
-        ℓ = collect(0:max(length.([fl, yl])...) - 1)
-        zeta_1 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*ℓ*(yl^2))
-        zeta_2 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*(yl^2))
-        zeta_1 = cf_from_cl(glq, 0, 0, zeta_1)
-        zeta_2 = cf_from_cl(glq, 0, 0, zeta_2)
-        res = cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:313 =# @__dot__(0.07957747154594766(zeta_2^2) + 0.31830988618379064(zeta_1^2) + 0.31830988618379064zeta_1*zeta_2)) |> (x->begin
-                        x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:314 =# @__dot__(ℓ / (2 + 4ℓ))
-                        x
-                    end)
-        res .+= cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:316 =# @__dot__(0.03978873577297383(zeta_2^2) + 0.15915494309189532(zeta_1^2) + 0.15915494309189532zeta_1*zeta_2)) |> (x->begin
-                        x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:317 =# @__dot__(1 / (2 + 4ℓ))
-                        x
-                    end)
-        res
-    end)
+function source_est(lmax, fl, yl)
+    npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
+    glq = wignerd.glquad(npoints)
+    ℓ = collect(0:max(length.([fl, yl])...) - 1)
+    zeta_1 = @__dot__(fl*(yl^2))
+    zeta_1 = cf_from_cl(glq, 0, 0, zeta_1; prefactor = true)
+    res = cl_from_cf(glq, 0, 0, lmax, @__dot__(6.283185307179585(zeta_1^2))) |> (x->begin
+                    x .*= @__dot__(0.5)
+                    x
+                end)
+    res
+end
 #+END_SRC
-which is an expression of the function (pardon the unfortunate comment
-line which is automatically added by julia for debugging purpose). One
-can see that it places our input variables in the defined order. The
-additional parameter ~lmax~ is added by default which tells the code
-what is the maximum ℓ to calculate. The ~cf_from_cl~ calls are
-converting our ℓ space quantities to angular space, and ~cl_from_cf~
-calls are the opposite. This shows how our code factors ℓ space
-convolution into a real space multiplication to speed-up the
-calculation. The result is returned in the ~res~ variable by default.
-Knowing this is important because sometimes one may need to do something
-to the result before returning. For example, we may want to return 
-~1 / res~ instead of ~res~. To do that, there is an option in
-~build_l12sum_calculator~ called ~post~ which allows one to pass a Vector
-of arbitrary expression. We can then write the following
+which is an expression of the function. One can see that it places our
+input variables in the defined order. The additional parameter ~lmax~
+is added by default which tells the code what is the maximum ℓ to
+calculate. The ~cf_from_cl~ calls are converting our ℓ space
+quantities to angular space, and ~cl_from_cf~ calls are the
+opposite. This shows how our code factors ℓ space convolution into a
+real space multiplication to speed-up the calculation. The result is
+returned in the ~res~ variable by default.  Knowing this is important
+because sometimes one may need to do something to the result before
+returning. For example, we may want to return ~1 / res~ instead of
+~res~. To do that, there is an option in ~build_l12sum_calculator~
+called ~post~ which allows one to pass a Vector of arbitrary
+expression. We can then write the following
 #+BEGIN_SRC julia
-@syms fl yl
+  @syms fl yl
 
-build_l12sum_calculator(R, "source_est",
-    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
-    [fl, yl],
-    post=[:(res .^= -1)],
-    evaluate=false,
-)
+  symlens.build_l12sum_calculator(
+      R, "source_est",
+      Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+      [fl, yl],
+      post=[:(res .^= -1)],
+      evaluate=false,
+  ) |> println
 #+END_SRC
 
 The output is 
 #+BEGIN_SRC julia
-:(function source_est(lmax, fl, yl)
-      npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
-      glq = wignerd.glquad(npoints)
-      ℓ = collect(0:max(length.([fl, yl])...) - 1)
-      zeta_1 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*ℓ*(yl^2))
-      zeta_2 = #= /home/yilun/work/laughing-succotash/src/core.jl:299 =# @__dot__(fl*(yl^2))
-      zeta_1 = cf_from_cl(glq, 0, 0, zeta_1)
-      zeta_2 = cf_from_cl(glq, 0, 0, zeta_2)
-      res = cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:313 =# @__dot__(0.07957747154594766(zeta_2^2) + 0.31830988618379064(zeta_1^2) + 0.31830988618379064zeta_1*zeta_2)) |> (x->begin
-                      x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:314 =# @__dot__(ℓ / (2 + 4ℓ))
-                      x
-                  end)
-      res .+= cl_from_cf(glq, 0, 0, lmax, #= /home/yilun/work/laughing-succotash/src/core.jl:316 =# @__dot__(0.03978873577297383(zeta_2^2) + 0.15915494309189532(zeta_1^2) + 0.15915494309189532zeta_1*zeta_2)) |> (x->begin
-                      x .*= #= /home/yilun/work/laughing-succotash/src/core.jl:317 =# @__dot__(1 / (2 + 4ℓ))
-                      x
-                  end)
-      res .^= -1
-      res
-  end)
+function source_est(lmax, fl, yl)
+    npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
+    glq = wignerd.glquad(npoints)
+    ℓ = collect(0:max(length.([fl, yl])...) - 1)
+    zeta_1 = @__dot__(fl*(yl^2))
+    zeta_1 = cf_from_cl(glq, 0, 0, zeta_1; prefactor = true)
+    res = cl_from_cf(glq, 0, 0, lmax, @__dot__(6.283185307179585(zeta_1^2))) |> (x->begin
+                    x .*= @__dot__(0.5)
+                    x
+                end)
+    res .^= -1
+    res
+end
 #+END_SRC
-As you can see, the lines are inserted before returning. Similarly
-there is also a ~pre~ option to add statements before computing the
-~zeta~ variables, which work in a similar way so we will not
-demonstrate again. 
+As you can see, the line we specified in ~post~ is inserted right
+before returning. Similarly there is also a ~pre~ option to add
+statements before computing the ~zeta~ variables, which work in a
+similar way so we will not demonstrate again.
 
 Next we can actually evaluate the function, 
 #+BEGIN_SRC julia
-@syms fl yl
+  @syms fl yl
 
-build_l12sum_calculator(R, "source_est", 
-    Dict(f(ℓ)=>fl, y(ℓ)=>yl),
-    [fl, yl],
-    post = [:(res .^= -1)],
-    evaluate=true)
+  symlens.build_l12sum_calculator(
+      R, "source_est", 
+      Dict(f(ℓ)=>fl, y(ℓ)=>yl),
+      [fl, yl],
+      post = [:(res .^= -1)],
+      evaluate=true
+  )
 #+END_SRC
 output:
 #+BEGIN_SRC text
