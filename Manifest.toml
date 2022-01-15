@@ -661,6 +661,12 @@ git-tree-sha1 = "a1ab52ff717d5abcc7e21f2d902d0d38572d36b1"
 uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 version = "4.2.1"
 
+[[deps.SyntaxTree]]
+deps = ["Test"]
+git-tree-sha1 = "9f33aae2c72d812968a6b7af9e189aa925661a99"
+uuid = "a4af3ec5-f8ac-5fed-a759-c2e80b4d74cb"
+version = "1.0.1"
+
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"

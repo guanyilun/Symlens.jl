@@ -102,11 +102,10 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     # the numerator)
     num = isdiv ? expr.num : expr
     step = factorize_wigd(num)
-    verbose && (@show step4)
+    verbose && (@show step)
     # 3. now if success, we should get an Addition of various factors
     # each of which is a multiplication with atomic factors.
-    num_terms = arguments(step)
-    @assert step isa SymbolicUtils.Add "step is not of Add type, fail!"
+    num_terms = step isa SymbolicUtils.Add ? argument(step) : [step]
     @assert all([x isa SymbolicUtils.Mul for x ∈ num_terms]) "some factors are not multiplicative products, fail!"
     @assert all([are_factors_atomic(x) for x ∈ num_terms]) "some factors not atomic, fail!"
     # and make sure we only have three wigner d matrices in each term
@@ -220,5 +219,5 @@ function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true,
     # Hence, I use a dirty hack that converts the function to a string
     # and parse it back. This way the implicit type information of
     # all variables are lost in the process.
-    evaluate ? (string(f) |> Meta.parse |> eval) : f
+    evaluate ? (string(linefilter!(f)) |> Meta.parse |> eval) : linefilter!(f)
 end

@@ -4,10 +4,12 @@ using Symbolics
 using SymbolicUtils
 using SymbolicUtils.Code
 using SymbolicUtils.Rewriters
-
+using SyntaxTree  # for better readability of returned expression
 using wignerd
 
 # reserved symbolic names
+# Fₒₖ represents F function in Okamoto & Hu lensing paper
+# ̱̱ℙ represents parity factor, i.e., (-1)^(ℓ+ℓ₁+ℓ₂)
 @syms w3j(l1::Number,l2::Number,l3::Number,m1::Number,m2::Number,m3::Number)::Real
 @syms Fₒₖ(l1::Number,l2::Number,l3::Number,s::Number)::Real
 @syms wigd(l::Number,s1::Number,s2::Number)::Real
