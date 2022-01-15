@@ -76,7 +76,7 @@ for (expr, func) in zip(
     ["Σ⁰", "Σ⁺", "Σ⁻", "Σˣ", "Γ⁰", "Γ⁺", "Γ⁻", "Γˣ"])
     println("building $func (lens)")
     kernels_lens[func] = Symlens.build_l12sum_calculator(
-        expr, func,
+        expr, (),
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
         evaluate=true
@@ -99,7 +99,7 @@ for (expr, func) in zip(
     ["Σ⁺", "Σ⁻", "Γ⁺", "Γ⁻"])
     println("building $func (rot)")
     kernels_rot[func] = Symlens.build_l12sum_calculator(
-        expr, func,
+        expr, (),
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
         evaluate=true
@@ -125,7 +125,7 @@ for (expr, func) in zip(
     ["Σ⁰", "Σ⁺", "Σ⁻", "Σˣ", "Γ⁰", "Γ⁺", "Γ⁻", "Γˣ"])
     println("building $func (amp)")
     kernels_amp[func] = Symlens.build_l12sum_calculator(
-        expr, func,
+        expr, (),
         Dict(A(ℓ)=>Al, B(ℓ)=>Bl),
         [Al, Bl],
         evaluate=true
@@ -158,7 +158,7 @@ function qtt(est, lmax, cl, ocl)
     1 ./ res
 end
 
-function qte(lmax, cl, ocl)
+function qte(est, lmax, cl, ocl)
     kernels, p = get_kernels_p(est)
     Al  = @. 1/ocl["TT"]
     Bl  = @. cl["TE"]^2/ocl["EE"]
@@ -172,7 +172,7 @@ function qte(lmax, cl, ocl)
     1 ./ res
 end
 
-function qtb(lmax, cl, ocl)
+function qtb(est, lmax, cl, ocl)
     kernels, p = get_kernels_p(est)
     Al  = @. 1/ocl["BB"]
     Bl  = @. cl["TE"]^2/ocl["TT"]
@@ -180,7 +180,7 @@ function qtb(lmax, cl, ocl)
     1 ./ res
 end
 
-function qee(lmax, cl, ocl)
+function qee(est, lmax, cl, ocl)
     kernels, p = get_kernels_p(est)
     Al  = @. 1/ocl["EE"]
     Bl  = @. cl["EE"]^2/ocl["EE"]
@@ -190,7 +190,7 @@ function qee(lmax, cl, ocl)
     1 ./ res
 end
 
-function qbb(lmax, cl, ocl)
+function qbb(est, lmax, cl, ocl)
     kernels, p = get_kernels_p(est)
     Al  = @. 1/ocl["BB"]
     Bl  = @. cl["BB"]^2/ocl["BB"]
@@ -200,7 +200,7 @@ function qbb(lmax, cl, ocl)
     1 ./ res
 end
 
-function qeb(lmax, cl, ocl)
+function qeb(est, lmax, cl, ocl)
     kernels, p = get_kernels_p(est)
     Al = @. 1/ocl["EE"]
     Bl = @. cl["BB"]^2/ocl["BB"]

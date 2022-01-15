@@ -24,6 +24,7 @@ export w3j, Fₒₖ, wigd, ℓ, ℓ₁, ℓ₂, ℙ
 include("utils.jl")
 include("rewriters.jl")
 include("core.jl")
+export build_l12sum_calculator, build_cl_cf_tables, factorize_wigd
 
 include("Prebuilt/Prebuilt.jl")
 

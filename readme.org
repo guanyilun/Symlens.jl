@@ -22,7 +22,7 @@ the below example, we are interested in ~R~.
 #+END_SRC
 
 Then one can easily build a calculator for it with
-~Symlens.build_l12sum_calculator~ function. To use this function, we
+~build_l12sum_calculator~ function. To use this function, we
 first provide our target expression which is ~R~, and then we provide
 a function name, which we can use to call the built function, here we
 named it =source_ext=. The third parameter is a dictionary that tells
@@ -35,7 +35,7 @@ loaded later, or to turn it into a function reachable in our scope.
 #+BEGIN_SRC julia
   @syms fl yl
 
-  Symlens.build_l12sum_calculator(
+  build_l12sum_calculator(
       R, "source_est",
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -74,7 +74,7 @@ expression. We can then write the following
 #+BEGIN_SRC julia
   @syms fl yl
 
-  Symlens.build_l12sum_calculator(
+  build_l12sum_calculator(
       R, "source_est",
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -83,7 +83,7 @@ expression. We can then write the following
   ) |> println
 #+END_SRC
 
-The output is 
+Output:
 #+BEGIN_SRC julia
 function source_est(lmax, fl, yl)
     npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
@@ -108,7 +108,7 @@ Next we can actually evaluate the function,
 #+BEGIN_SRC julia
   @syms fl yl
 
-  Symlens.build_l12sum_calculator(
+  build_l12sum_calculator(
       R, "source_est", 
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -116,7 +116,7 @@ Next we can actually evaluate the function,
       evaluate=true
   )
 #+END_SRC
-output:
+Output:
 #+BEGIN_SRC text
 source_est (generic function with 1 method)
 #+END_SRC
@@ -174,16 +174,16 @@ Output:
 #+END_SRC
 Output:
 #+BEGIN_SRC ascii
-23.942 ms (18142 allocations: 1.26 MiB)
+14.334 ms (9073 allocations: 750.70 KiB)
 #+END_SRC
-This shows that our new calculator is ~ 32 times faster than the
+This shows that our new calculator is ~ 60 times faster than the
 previous code. Note that the performance gain is not due to us
 building the function dynamically, nor due to performance of julia
 versus fortran. It is mostly coming from the wigner d calculator which
 I implemented in a separate [[https://github.com/guanyilun/wignerd.jl][repo]]. It is implemented based on an
-iteration-free algorithm, thanks to the =FastGaussianQuadrature.jl= library, that
-solves the quadrature weights in O(1) complexity. This is much faster
-(~200x) than the Newton's method approach implemented in
-=tempura=. The wigner d recursive calculation itself is also about a
-factor of 2-4 faster due to SIMD optimization thanks to the
+iteration-free algorithm, thanks to the =FastGaussianQuadrature.jl=
+library, that solves the quadrature weights in O(1) complexity. This
+is much faster (~200x) than the Newton's method approach implemented
+in =tempura=. The wigner d recursive calculation itself is also about
+a factor of 2-4 faster due to SIMD optimization thanks to the
 =LoopVectorization.jl= package.
