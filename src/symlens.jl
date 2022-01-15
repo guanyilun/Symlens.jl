@@ -18,8 +18,8 @@ using wignerd
 
 export w3j, Fₒₖ, wigd, ℓ, ℓ₁, ℓ₂, ℙ
 
-include("rewriters.jl")
 include("utils.jl")
+include("rewriters.jl")
 include("core.jl")
 
 end
