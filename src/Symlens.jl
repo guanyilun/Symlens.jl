@@ -1,4 +1,4 @@
-module symlens
+module Symlens
 
 using Symbolics
 using SymbolicUtils
@@ -6,6 +6,9 @@ using SymbolicUtils.Code
 using SymbolicUtils.Rewriters
 using SyntaxTree  # for better readability of returned expression
 using wignerd
+
+# convenience
+export @syms, substitute
 
 # reserved symbolic names
 # Fₒₖ represents F function in Okamoto & Hu lensing paper
@@ -21,5 +24,7 @@ export w3j, Fₒₖ, wigd, ℓ, ℓ₁, ℓ₂, ℙ
 include("utils.jl")
 include("rewriters.jl")
 include("core.jl")
+
+include("Prebuilt/Prebuilt.jl")
 
 end

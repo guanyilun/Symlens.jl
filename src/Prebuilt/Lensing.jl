@@ -1,4 +1,4 @@
-module lens
+module Lensing
 
 using wignerd
 

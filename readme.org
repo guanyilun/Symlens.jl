@@ -1,5 +1,4 @@
-* laughing-succotash
-
+* Succotash
 CMB quadratic estimator related calculation. Mostly it concerns
 normalization of quadratic estimators, though it's not limited to
 that. The core of this code is a symbolic factorization of double
@@ -12,8 +11,7 @@ for source in CMB. One first need to provide an analytic expression, of the
 quantity that we want to calculate as a sum of ℓ₁ and ℓ₂. For example, in
 the below example, we are interested in ~R~.
 #+BEGIN_SRC julia
-  using SymbolicUtils
-  using symlens
+  using Symlens
 
   # provide an analytic expression: here R is what we are interested to
   # sum over ℓ₁ and ℓ₂
@@ -24,7 +22,7 @@ the below example, we are interested in ~R~.
 #+END_SRC
 
 Then one can easily build a calculator for it with
-~symlens.build_l12sum_calculator~ function. To use this function, we
+~Symlens.build_l12sum_calculator~ function. To use this function, we
 first provide our target expression which is ~R~, and then we provide
 a function name, which we can use to call the built function, here we
 named it =source_ext=. The third parameter is a dictionary that tells
@@ -37,7 +35,7 @@ loaded later, or to turn it into a function reachable in our scope.
 #+BEGIN_SRC julia
   @syms fl yl
 
-  symlens.build_l12sum_calculator(
+  Symlens.build_l12sum_calculator(
       R, "source_est",
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -76,7 +74,7 @@ expression. We can then write the following
 #+BEGIN_SRC julia
   @syms fl yl
 
-  symlens.build_l12sum_calculator(
+  Symlens.build_l12sum_calculator(
       R, "source_est",
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -110,7 +108,7 @@ Next we can actually evaluate the function,
 #+BEGIN_SRC julia
   @syms fl yl
 
-  symlens.build_l12sum_calculator(
+  Symlens.build_l12sum_calculator(
       R, "source_est", 
       Dict(f(ℓ)=>fl, y(ℓ)=>yl),
       [fl, yl],
@@ -151,7 +149,7 @@ fl = 1 ./ ocltt
 res_sym = source_est(3000, fl, yl)
 
 # compare the results
-plot(l, [res_py res_sym], labels=["tempura" "symlens"], xaxis=:log10, xlim=(2,3000), title="source TT")
+plot(l, [res_py res_sym], labels=["tempura" "Symlens"], xaxis=:log10, xlim=(2,3000), title="source TT")
 #+END_SRC
 
 Output:
