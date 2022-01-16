@@ -263,3 +263,63 @@ function qtbeb(est, lmax, rlmin, rlmax, cl, ocl)
     res .+= kernels["Σ⁻"](lmax, rlmin, rlmax, Al, Bl)
     res
 end
+
+# --------------------------
+# some imaginary estimators
+# --------------------------
+
+function iqte(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["EE"]
+    Bl = @. cl["TB"]^2/ocl["TT"]
+    res = kernels["Σ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    1 ./ res
+end
+
+function iqtb(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["TT"]
+    Bl = @. cl["TB"]^2/ocl["BB"]
+    res = kernels["Σ⁰"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["TE"]/ocl["TT"]
+    Bl .= @. 1/ocl["TB"]/ocl["BB"]
+    res .+= 2*p*kernels["Γˣ"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. 1/ocl["BB"]
+    Bl .= @. cl["TB"]^2/ocl["TT"]
+    res .+= kernels["Σ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    1 ./ res
+end
+
+function iqee(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["EE"]
+    Bl = @. cl["EB"]^2/ocl["EE"]
+    res = kernels["Σ⁻"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["EB"]/ocl["EE"]
+    res .-= p*kernels["Γ⁻"](lmax, rlmin, rlmax, Al, Al)
+    1 ./ res
+end
+
+function iqbb(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["BB"]
+    Bl = @. cl["EB"]^2/ocl["BB"]
+    res = kernels["Σ⁻"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["EB"]/ocl["BB"]
+    res .-= p*kernels["Γ⁻"](lmax, rlmin, rlmax, Al, Al)
+    1 ./ res
+end
+
+function iqeb(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["EE"]
+    Bl = @. cl["EB"]^2/ocl["BB"]
+    res = kernels["Σ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["EB"]/ocl["EE"]
+    Bl .= @. cl["EB"]/ocl["BB"]
+    res .+= 2*p*kernels["Γ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. 1/ocl["BB"]
+    Bl .= @. cl["EB"]^2/ocl["EE"]
+    res .+= kernels["Σ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    1 ./ res
+end
