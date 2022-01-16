@@ -43,7 +43,7 @@ Wₑ⁺(ℓ₁,ℓ₂,ℓ₃,c) = ζ⁺*q⁺(c)*γ(ℓ₁,ℓ₂,ℓ₃)*w3j(ℓ
 Wₑ⁻(ℓ₁,ℓ₂,ℓ₃,c) = ζ⁻*q⁻(c)*γ(ℓ₁,ℓ₂,ℓ₃)*w3j(ℓ₁,ℓ₂,ℓ₃,2,0,-2)
 
 #-----------------------------------
-# normalization kernel calculation 
+# normalization kernel calculation
 #-----------------------------------
 
 # general definition:
@@ -71,7 +71,7 @@ Wₑ⁻(ℓ₁,ℓ₂,ℓ₃,c) = ζ⁻*q⁻(c)*γ(ℓ₁,ℓ₂,ℓ₃)*w3j(ℓ
 Σ⁻ = substitute(Σ⁺, Dict(ℙ=>-ℙ))  # avoid treating imaginary, which is unsupported for now
 Σˣ = 1/(2ℓ+1)*Wₓ⁰(ℓ₁,ℓ,ℓ₂,cϕ)Wₓ⁺(ℓ₁,ℓ,ℓ₂,cϕ)A(ℓ₁)B(ℓ₂)
 # l₂ <-> l₁ in second W
-Γ⁰ = 1/(2ℓ+1)*Wₓ⁰(ℓ₁,ℓ,ℓ₂,cϕ)Wₓ⁰(ℓ₂,ℓ,ℓ₁,cϕ)A(ℓ₁)B(ℓ₂) 
+Γ⁰ = 1/(2ℓ+1)*Wₓ⁰(ℓ₁,ℓ,ℓ₂,cϕ)Wₓ⁰(ℓ₂,ℓ,ℓ₁,cϕ)A(ℓ₁)B(ℓ₂)
 Γ⁺ = 1/(2ℓ+1)*Wₓ⁺(ℓ₁,ℓ,ℓ₂,cϕ)Wₓ⁺(ℓ₂,ℓ,ℓ₁,cϕ)A(ℓ₁)B(ℓ₂)
 Γ⁻ = substitute(Γ⁺, Dict(ℙ=>-ℙ))  # avoid treating imaginary
 Γˣ = 1/(2ℓ+1)*Wₓ⁰(ℓ₁,ℓ,ℓ₂,cϕ)Wₓ⁺(ℓ₂,ℓ,ℓ₁,cϕ)A(ℓ₁)B(ℓ₂)
@@ -218,4 +218,60 @@ function qeb(est, lmax, rlmin, rlmax, cl, ocl)
     Bl .= @. cl["EE"]^2/ocl["EE"]
     res .+= kernels["Σ⁻"](lmax, rlmin, rlmax, Al, Bl)
     1 ./ res
+end
+
+function qttte(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. 1/ocl["TT"]
+    Bl = @. cl["TT"]*cl["TE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res = kernels["Σ⁰"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["TE"]/ocl["TT"]
+    Bl .= @. cl["TT"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res .+= p*kernels["Γˣ"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["TE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl .= @. cl["TT"]/ocl["TT"]
+    res .+= p*kernels["Γ⁰"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl .= @. cl["TE"]*cl["TT"]/ocl["TT"]
+    res .+= kernels["Σˣ"](lmax, rlmin, rlmax, Al, Bl)
+    res
+end
+
+function qttee(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl = @. cl["TT"]*cl["EE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res = kernels["Σˣ"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. ocl["TE"]*cl["EE"]/(ocl["TT"]*ocl["EE"])
+    Bl .= @. cl["TT"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res .+= p*kernels["Γˣ"](lmax, rlmin, rlmax, Al, Bl)
+    res
+end
+
+function qteee(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl = @. cl["TE"]*cl["EE"]/ocl["EE"]
+    res = kernels["Σˣ"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. cl["TE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl .= @. cl["EE"]/ocl["EE"]
+    res .+= p*kernels["Γ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. (ocl["TE"]*cl["EE"])/(ocl["TT"]*ocl["EE"])
+    Bl .= @. (cl["TE"]*ocl["EE"])/(ocl["EE"]^2)
+    res .+= p*kernels["Γˣ"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. 1/ocl["EE"]
+    Bl .= @. cl["TE"]*cl["EE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res .+= kernels["Σ⁺"](lmax, rlmin, rlmax, Al, Bl)
+    res
+end
+
+function qtbeb(est, lmax, rlmin, rlmax, cl, ocl)
+    kernels, p = get_kernels_p(est)
+    Al = @. cl["TE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    Bl = @. cl["BB"]/ocl["BB"]
+    res = p*kernels["Γ⁻"](lmax, rlmin, rlmax, Al, Bl)
+    Al .= @. 1/ocl["BB"]
+    Bl .= @. cl["TE"]*cl["EE"]*ocl["TE"]/(ocl["TT"]*ocl["EE"])
+    res .+= kernels["Σ⁻"](lmax, rlmin, rlmax, Al, Bl)
+    res
 end
