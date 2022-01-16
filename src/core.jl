@@ -177,7 +177,7 @@ function build_cl_cf_tables(expr; prefactor=false, verbose=false)
     (cl_table, cf_table)
 end
 
-function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
+function build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=false)
     nexprs = length(cf_table)
     exprs = []
     # create n local variables to represent each zeta note that this
@@ -186,10 +186,18 @@ function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
     # here at some point <- FIXME
     rename = (x) -> substitute(x,
         Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
-            for (i, (k, _)) ∈ enumerate(cf_table)))
+             for (i, (k, _)) ∈ enumerate(cf_table)))
+    # initialize ℓ
+    push!(exprs, :(slice = rlmin:rlmax))
+    push!(exprs, :(ℓ = collect(slice)))
+    # first create initialization expression
+    append!(exprs, [:($(rename(k).name) = zeros(rlmax+1)) for (k,v) in cf_table])
     # build assignment expression
-    append!(exprs, [:($(rename(k).name) = @__dot__ $(substitute(v[2], rename_table)))
-                    for (k,v) in cf_table])
+    bindings = [:($(arg) = $(arg)[slice]) for arg in args]
+    assignments = [:($(rename(k).name)[rlmin+1:rlmax+1] .= @__dot__ $(substitute(v[2], rename_table)))
+                   for (k,v) in cf_table]
+    let_block = Expr(:let, Expr(:block, bindings...), Expr(:block, assignments...))
+    push!(exprs, let_block)
     # build cl_from_cl expression, reuse variable names
     if prefactor
         append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name); prefactor=true))
@@ -198,6 +206,8 @@ function build_wigd_calls(cl_table, cf_table, rename_table; prefactor=false)
         append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
                         for (k,v) in cf_table])
     end
+    # redefinition of ℓ
+    push!(exprs, :(ℓ = collect(0:lmax)))
     # build cf_from_cl expression and add inplace
     for (i,v) in enumerate(cl_table)
         # the awkward pipe is to avoid __dot__ from picking up other variables in the function
@@ -215,12 +225,11 @@ end
 function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true, evaluate=false, pre=[], post=[])
     cl_table, cf_table = build_cl_cf_tables(expr; prefactor=prefactor)
     name = name isa String ? Symbol(name) : name
-    f = :(function $(name)(lmax, $(map(x->getfield(x,:name), args)...))
+    f = :(function $(name)(lmax, rlmin, rlmax, $(map(x->getfield(x,:name), args)...))
               $(pre...)   # allow pass in arbitrary preprocessor
               npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
               glq = wignerd.glquad(npoints)
-              ℓ = collect(0:(max(length.([$(args...)])...)-1))
-              $(build_wigd_calls(cl_table, cf_table, rename_table; prefactor=prefactor)...)
+              $(build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=prefactor)...)
               $(post...)  # allow pass in arbitrary postprocessor
               res         # we have assumed result is stored in this variable
           end)
