@@ -5,6 +5,19 @@ that. The core of this code is a symbolic factorization of double
 l-space summation of quadratic terms in wigner 3j symbols. Such terms
 are most often seen in the calculation of lensing normalization.
 
+** Installation
+In Julia REPL, first type =]= to enter package management mode. First install
+its dependent library
+#+begin_src julia
+add https://github.com/guanyilun/wignerd.jl
+#+end_src
+then install Symlen.jl with
+#+begin_src julia
+add https://github.com/guanyilun/laughing-succotash
+#+end_src
+Note that the installation is only tested on Julia 1.7, so I recommend
+trying this version first in case you encounter any installation
+problem. If problem still resides please let me know.
 ** A demonstration of building a calculator for source estimator
 The workflow for building a calculator is the following. Consider the estimator
 for source in CMB. One first need to provide an analytic expression, of the
