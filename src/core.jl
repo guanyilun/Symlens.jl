@@ -188,12 +188,11 @@ function build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=fals
         Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
              for (i, (k, _)) ∈ enumerate(cf_table)))
     # initialize ℓ
-    push!(exprs, :(slice = rlmin:rlmax))
-    push!(exprs, :(ℓ = collect(slice)))
+    push!(exprs, :(ℓ = collect(rlmin:rlmax)))
     # first create initialization expression
     append!(exprs, [:($(rename(k).name) = zeros(rlmax+1)) for (k,v) in cf_table])
     # build assignment expression
-    bindings = [:($(arg) = view($(arg),slice)) for arg in args]
+    bindings = [:($(arg) = view($(arg),rlmin+1:rlmax+1)) for arg in args]
     assignments = [:($(rename(k).name)[rlmin+1:rlmax+1] .= @__dot__ $(substitute(v[2], rename_table)))
                    for (k,v) in cf_table]
     let_block = Expr(:let, Expr(:block, bindings...), Expr(:block, assignments...))
