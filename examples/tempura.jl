@@ -47,7 +47,7 @@ Wₑ⁻(ℓ₁,ℓ₂,ℓ₃,c) = ζ⁻*q⁻(c)*γ(ℓ₁,ℓ₂,ℓ₃)*w3j(ℓ
 # normalization kernel calculation #
 ####################################
 
-@syms A(ℓ) B(ℓ) ℓ ℓ₁ ℓ₂
+@syms A(ℓ) B(ℓ)
 @syms Al Bl
 
 #----------
