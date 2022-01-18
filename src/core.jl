@@ -221,13 +221,61 @@ function build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=fals
     exprs
 end
 
+
+function build_wigd_calls_multi(cl_tables, cf_table, reduce_expr, rename_table, args; prefactor=false)
+    nexprs = length(cf_table)
+    exprs = []
+    # create n local variables to represent each zeta note that this
+    # is not elegant as often times some of these zeta variables are
+    # identical, so I should add another unique and variable remapping
+    # here at some point <- FIXME
+    rename = (x) -> substitute(x,
+                               Dict(k => SymbolicUtils.Sym{Number}(Symbol("zeta_$i"))
+                                    for (i, (k, _)) ∈ enumerate(cf_table)))
+    # initialize ℓ
+    push!(exprs, :(ℓ = collect(rlmin:rlmax)))
+    # first create initialization expression
+    append!(exprs, [:($(rename(k).name) = zeros(rlmax+1)) for (k,v) in cf_table])
+    # build assignment expression
+    bindings = [:($(arg) = view($(arg),rlmin+1:rlmax+1)) for arg in args]
+    assignments = [:($(rename(k).name)[rlmin+1:rlmax+1] .= @__dot__ $(substitute(v[2], rename_table)))
+                   for (k,v) in cf_table]
+    let_block = Expr(:let, Expr(:block, bindings...), Expr(:block, assignments...))
+    push!(exprs, let_block)
+    # build cl_from_cl expression, reuse variable names
+    if prefactor
+        append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name); prefactor=true))
+                        for (k,v) in cf_table])
+    else
+        append!(exprs, [:($(rename(k).name) = cf_from_cl(glq, $(v[1]...), $(rename(k).name)))
+                        for (k,v) in cf_table])
+    end
+    # redefinition of ℓ
+    push!(exprs, :(ℓ = collect(0:lmax)))
+    # build cf_from_cl expression and add inplace
+    for (k, cl_table) in cl_tables
+        for (i,v) in enumerate(cl_table)
+            # the awkward pipe is to avoid __dot__ from picking up other variables in the function
+             if i == 1
+                 push!(exprs, :($(k) = (cl_from_cf(glq,$(v[1]...),lmax, @__dot__$(rename(v[2])))
+                                        |> x -> (x .*=@__dot__ $(v[3]); x))))
+             else
+                 push!(exprs, :($(k) .+= (cl_from_cf(glq,$(v[1]...),lmax, @__dot__$(rename(v[2])))
+                                          |> x -> (x .*= @__dot__ $(v[3]); x))))
+             end
+        end
+    end
+    push!(exprs, :(res = @__dot__ $(reduce_expr)))
+    exprs
+end
+
 function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true, evaluate=false, pre=[], post=[])
     cl_table, cf_table = build_cl_cf_tables(expr; prefactor=prefactor)
     name = name isa String ? Symbol(name) : name
     f = :(function $(name)(lmax, rlmin, rlmax, $(map(x->getfield(x,:name), args)...))
-              $(pre...)   # allow pass in arbitrary preprocessor
               npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
               glq = wignerd.glquad(npoints)
+              $(pre...)   # allow pass in arbitrary preprocessor
               $(build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=prefactor)...)
               $(post...)  # allow pass in arbitrary postprocessor
               res         # we have assumed result is stored in this variable
@@ -240,4 +288,57 @@ function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true,
     # and parse it back. This way the implicit type information of
     # all variables are lost in the process.
     evaluate ? (string(linefilter!(f)) |> Meta.parse |> eval) : linefilter!(f)
+end
+
+function merge_cl_cf_tables(cl_tables, cf_tables)
+    reverse_map = Dict()
+    for (_, table) in cf_tables
+        for (k,v) in table
+            if haskey(reverse_map, v)
+                push!(reverse_map[v], k)
+            else
+                reverse_map[v] = [k]
+            end
+        end
+    end
+    reduced_cf_table = Dict()
+    rename_table = Dict()
+    for (k, v) in reverse_map
+        reduced_cf_table[v[1]] = k
+        if length(v) > 1
+            for equiv in v[2:end]
+                rename_table[equiv] = v[1]
+            end
+        end
+    end
+    reduced_cl_tables = Dict()
+    for (k, table) in cl_tables
+        reduced_cl_tables[k] = [[v[1], substitute(v[2], rename_table), v[3]] for v in table]
+    end
+    return reduced_cf_table, reduced_cl_tables
+end
+
+"""Similar to build_l12sum_calculator but calculate multiple
+expressions at the same time. The advantage of that is I can merge the
+cf_tables to maximally reduce the number of terms to be
+calculated. """
+function build_multi_l12sum_calculator(expr_dict::Dict, reduce_expr, name, rename_table; prefactor=true)
+    cl_tables = Dict()
+    cf_tables = Dict()
+    for v, expr in expr_dict
+        cl_tables[v], cf_tables[v] = build_cl_cf_tables(expr; prefactor=prefactor)
+    end
+    # now we merge the cf_tables
+    cf_table, reduced_cl_tables = merge_tables(cf_tables, cl_tables)
+    name = name isa String ? Symbol(name) : name
+
+    f = :(function $(name)(lmax, rlmin, rlmax, $(map(x->getfield(x,:name), args)...))
+              npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
+              glq = wignerd.glquad(npoints)
+              $(pre...)   # allow pass in arbitrary preprocessor
+              $(build_wigd_calls_multi(cl_table, cf_table, reduce_expr, rename_table, args; prefactor=prefactor)...)
+              $(post...)  # allow pass in arbitrary postprocessor
+              res         # we have assumed result is stored in this variable
+          end)
+
 end
