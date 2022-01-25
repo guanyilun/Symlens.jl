@@ -1,7 +1,7 @@
 * Symlens.jl
 [[https://guanyilun.github.io/Symlens.jl/stable][https://img.shields.io/badge/docs-stable-blue.svg]]
 [[https://guanyilun.github.io/Symlens.jl/dev][https://img.shields.io/badge/docs-dev-blue.svg]]
-[[https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml?query=branch%3Amain][https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml/badge.svg?branch=master]]
+[[https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml?query=branch%3Amaster][https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml/badge.svg?branch=master]]
 [[https://codecov.io/gh/guanyilun/laughing-succotash][https://codecov.io/gh/guanyilun/laughing-succotash/branch/master/graph/badge.svg]]
 
 CMB quadratic estimator related calculation. Mostly it concerns
