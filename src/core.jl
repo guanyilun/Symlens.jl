@@ -226,8 +226,8 @@ function build_l12sum_calculator(expr, name, rename_table, args; prefactor=true,
     name = name isa String ? Symbol(name) : name
     f = :(function $(name)(lmax, rlmin, rlmax, $(map(x->getfield(x,:name), args)...))
               $(pre...)   # allow pass in arbitrary preprocessor
-              npoints = (max(lmax,length.([$(args...)])...)*3+1)/2 |> round |> Int
-              glq = wignerd.glquad(npoints)
+              npoints = round(Int, (max(lmax,length.([$(args...)])...)*3+1)/2)
+              glq = glquad(npoints)
               $(build_wigd_calls(cl_table, cf_table, rename_table, args; prefactor=prefactor)...)
               $(post...)  # allow pass in arbitrary postprocessor
               res         # we have assumed result is stored in this variable

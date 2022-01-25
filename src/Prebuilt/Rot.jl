@@ -1,6 +1,6 @@
 module Rot
 
-using wignerd
+using Wignerd
 
 """
     clbb_from_claa(lmax_b, clee, claa)
@@ -17,8 +17,8 @@ Returns
 - clbb
 """
 function clbb_from_claa(lmax, clee, claa)
-    npoints = (3*max([lmax, length.([clee, claa])...]...)+1)/2 |> Int
-    glq = wignerd.glquad(npoints)
+    npoints = round(Int, (3*max([lmax, length.([clee, claa])...]...)+1)/2)
+    glq = glquad(npoints)
 
     ls = collect(0:length(claa)-1)
     zeta_00 = cf_from_cl(glq, 0, 0, claa, prefactor=true)
@@ -27,7 +27,7 @@ function clbb_from_claa(lmax, clee, claa)
     zeta_m2m2 = cf_from_cl(glq, -2, -2, clee, prefactor=true)
     zeta_p2m2 = cf_from_cl(glq,  2, -2, clee, prefactor=true)
     clbb = (cl_from_cf(glq,  2, 2, lmax, @. zeta_00 * zeta_m2m2) .+
-            cl_from_cf(glq, -2, 2, lmax, @. zeta_00 * zeta_p2m2)) .* (4π)
+        cl_from_cf(glq, -2, 2, lmax, @. zeta_00 * zeta_p2m2)) .* (4π)
     clbb
 end
 

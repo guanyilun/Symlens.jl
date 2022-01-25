@@ -1,6 +1,6 @@
 module Lensing
 
-using wignerd
+using Wignerd
 
 function qtt(lmax_p, cltt, nltt)
     lmax_t = length(cltt) - 1

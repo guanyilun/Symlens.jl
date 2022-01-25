@@ -1,4 +1,9 @@
 * Symlens.jl
+[[https://guanyilun.github.io/Symlens.jl/stable][https://img.shields.io/badge/docs-stable-blue.svg]]
+[[https://guanyilun.github.io/Symlens.jl/dev][https://img.shields.io/badge/docs-dev-blue.svg]]
+[[https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml?query=branch%3Amain][https://github.com/guanyilun/laughing-succotash/actions/workflows/CI.yml/badge.svg?branch=main]]
+[[https://codecov.io/gh/guanyilun/laughing-succotash][https://codecov.io/gh/guanyilun/laughing-succotash/branch/main/graph/badge.svg]]
+
 CMB quadratic estimator related calculation. Mostly it concerns
 normalization of quadratic estimators, though it's not limited to
 that. The core of this code is a symbolic factorization of double
@@ -9,7 +14,7 @@ are most often seen in the calculation of lensing normalization.
 In Julia REPL, first type =]= to enter package management mode. First install
 its dependent library
 #+begin_src julia
-add https://github.com/guanyilun/wignerd.jl
+add https://github.com/guanyilun/Wignerd.jl
 #+end_src
 then install Symlen.jl with
 #+begin_src julia
@@ -60,7 +65,7 @@ The output of this code will look like
 #+BEGIN_SRC julia
 function source_est(lmax, fl, yl)
     npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
-    glq = wignerd.glquad(npoints)
+    glq = glquad(npoints)
     ℓ = collect(0:max(length.([fl, yl])...) - 1)
     zeta_1 = @__dot__(fl*(yl^2))
     zeta_1 = cf_from_cl(glq, 0, 0, zeta_1; prefactor = true)
@@ -100,7 +105,7 @@ Output:
 #+BEGIN_SRC julia
 function source_est(lmax, fl, yl)
     npoints = ((max(lmax, length.([fl, yl])...) * 3 + 1) / 2 |> round) |> Int
-    glq = wignerd.glquad(npoints)
+    glq = glquad(npoints)
     ℓ = collect(0:max(length.([fl, yl])...) - 1)
     zeta_1 = @__dot__(fl*(yl^2))
     zeta_1 = cf_from_cl(glq, 0, 0, zeta_1; prefactor = true)
@@ -193,7 +198,7 @@ This shows that our new calculator is ~ 60 times faster than the
 previous code. Note that the performance gain is not due to us
 building the function dynamically, nor due to performance of julia
 versus fortran. It is mostly coming from the wigner d calculator which
-I implemented in a separate [[https://github.com/guanyilun/wignerd.jl][repo]]. It is implemented based on an
+I implemented in a separate [[https://github.com/guanyilun/Wignerd.jl][repo]]. It is implemented based on an
 iteration-free algorithm, thanks to the =FastGaussianQuadrature.jl=
 library, that solves the quadrature weights in O(1) complexity. This
 is much faster (~200x) than the Newton's method approach implemented

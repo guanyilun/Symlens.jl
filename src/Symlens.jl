@@ -5,7 +5,7 @@ using SymbolicUtils
 using SymbolicUtils.Code
 using SymbolicUtils.Rewriters
 using SyntaxTree  # for better readability of returned expression
-using wignerd
+using Wignerd
 
 # convenience
 export @syms, substitute
