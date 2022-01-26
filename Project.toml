@@ -9,11 +9,12 @@ Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 SyntaxTree = "a4af3ec5-f8ac-5fed-a759-c2e80b4d74cb"
 Wignerd = "49d3ce31-8ce4-4efd-b9c8-b4f4221d34d9"
 
+[compat]
+SymbolicUtils = "0.19"
+julia = "1.7"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[compat]
-julia = "1.7"
 
 [targets]
 test = ["Test"]
